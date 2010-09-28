@@ -1,7 +1,7 @@
 <?php
 
-
 namespace Curl;
+
 use Nette;
 
 
@@ -359,7 +359,11 @@ class Curl extends Nette\Object
 	 */
 	public function getOption($option)
 	{
-		return $this->options[strtoupper($option)];
+		if (isset($this->options[strtoupper($option)])) {
+			return $this->options[strtoupper($option)];
+		}
+
+		return NULL;
 	}
 
 
@@ -1003,8 +1007,8 @@ class Curl extends Nette\Object
 	 */
 	public function request($method, $url, $vars = array(), $cycles = 1)
 	{
-                if($cycles > self::$maxCycles){
-                        throw new CurlException("Redirect loop");
+		if($cycles > self::$maxCycles || $cycles > $this->getOption('maxredirs')){
+				throw new CurlException("Redirect loop");
 		}
 
 		$this->error = Null;
@@ -1239,7 +1243,7 @@ class CurlException extends \Exception
 
 
 
-	public function __construct($message, $code, $response)
+	public function __construct($message, $code = 0, $response = NULL)
 	{
 		parent::__construct($message, $code);
 
