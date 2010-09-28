@@ -2,6 +2,8 @@
 
 namespace cURL;
 use Nette;
+use Nette\String;
+
 
 /**
  * Parses the response from a cURL request into an object containing
@@ -75,7 +77,7 @@ class CurlResponse extends Nette\Object
 
 		} else {
 			# Extract headers from response
-			preg_match_all(self::HEADERS_REGEXP, $response, $matches);
+			$matches = String::matchAll($response, self::HEADERS_REGEXP);
 			$headers_string = array_pop($matches[0]);
 			$headers = explode("\r\n", str_replace("\r\n\r\n", '', $headers_string));
 
@@ -96,7 +98,7 @@ class CurlResponse extends Nette\Object
 	{
 		# Extract the version and status from the first header
 		$version_and_status = array_shift($headers);
-		preg_match(self::VERSION_AND_STATUS, $version_and_status, $matches);
+		$matches = String::match($version_and_status, self::VERSION_AND_STATUS);
 		if( count($matches) > 0 ){
 			$this->headers['Http-Version'] = $matches[1];
 			$this->headers['Status-Code'] = $matches[2];
@@ -105,7 +107,7 @@ class CurlResponse extends Nette\Object
 
 		# Convert headers into an associative array
 		foreach ($headers as $header) {
-			preg_match(self::HEADER_REGEXP, $header, $matches);
+			$matches = String::match($header, self::HEADER_REGEXP);
 			$this->headers[$matches[1]] = $matches[2];
 		}
 	}
@@ -133,7 +135,7 @@ class CurlResponse extends Nette\Object
 				}
 				$rows[] = fgets($fp);
 
-				preg_match_all(self::HEADERS_REGEXP, implode($rows), $matches);
+				$matches = String::matchAll(implode($rows), self::HEADERS_REGEXP);
 
 			} while( count($matches[0])==0 );
 
@@ -207,6 +209,45 @@ class CurlResponse extends Nette\Object
 	public function getResponse()
 	{
 		return $this->body;
+	}
+
+
+	/**
+	 * @return \phpQuery\phpQuery
+	 */
+	public function getQuery()
+	{
+		$contentType = NULL;
+		if (isset($this->headers['Content-Type'])) {
+			$contentType = $this->headers['Content-Type'];
+		}
+
+		return \phpQuery\phpQuery::newDocument($this->body, $contentType);
+	}
+
+
+	/**
+	 * @param string $to
+	 * @param string $from
+	 * @return CurlResponse
+	 */
+	public function convert($to = "UTF-8", $from = NULL)
+	{
+		if ($from === NULL) {
+			$charset = $this->query['head > meta[http-equiv=Content-Type]']->attr('content');
+			$match = String::match($charset, "~^(?P<type>[^;]+); charset=(?P<charset>.+)$~");
+
+			$from = $match['charset'];
+		}
+
+		if ($body = @iconv($from, $to, $this->body)) {
+			$this->body = $body;
+
+		} else {
+			throw new CurlException("Charset conversion from $from to $to failed");
+		}
+
+		return $this;
 	}
 
 
