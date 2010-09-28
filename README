@@ -5,7 +5,7 @@ cURL wrapper
 Pokročilý cURL wrapper usnadňují práci s "cURL":http://cz.php.net/curl
 
 |* Verze | 0.6
-|* Download | http://curl.kdyby.org/download/curl-wrapper_v0.6_php5.2.4_.tar.gz (12.3 kB)
+|* Download | http://github.com/HosipLan/cURL-wrapper
 |* Forum thread | http://forum.nette.org/cs/3054-curl-wrapper
 |* Autor | Filip Procházka
 |* Homepage | http://curl.kdyby.org/
