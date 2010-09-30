@@ -1,0 +1,3 @@
+[submodule "phpQueryLite"]
+	path = phpQueryLite
+	url = git@github.com:HosipLan/phpQueryLite.git
