@@ -1,6 +1,7 @@
 <?php
 
-namespace cURL;
+namespace Curl;
+
 use Nette;
 use Nette\String;
 
@@ -227,15 +228,14 @@ class CurlResponse extends Nette\Object
 
 
 	/**
-	 * @param string $to
-	 * @param string $from
-	 * @return CurlResponse
+	 * @param string $charset
+	 * @return CurlResponse 
 	 */
 	public function convert($to = "UTF-8", $from = NULL)
 	{
 		if ($from === NULL) {
 			$charset = $this->query['head > meta[http-equiv=Content-Type]']->attr('content');
-			$match = String::match($charset, "~^(?P<type>[^;]+); charset=(?P<charset>.+)$~");
+			$match = \Nette\String::match($charset, "~^(?P<type>[^;]+); charset=(?P<charset>.+)$~");
 
 			$from = $match['charset'];
 		}
