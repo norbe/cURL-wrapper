@@ -23,6 +23,7 @@ require_once __DIR__ . "/Response.php";
  * @property string $downloadFolder
  * @property string $downloadPath
  * @property-read string $error
+ * @property-read array $info
  * @property string $fileProtocol
  * @property boolean $followRedirects
  * @property array $headers
@@ -789,6 +790,16 @@ class Request extends Nette\Object
 
 
 	/**
+	 * Returns the error string of the current request if one occurred
+	 * @return array
+	 */
+	public function getInfo()
+	{
+		return $this->Info;
+	}
+
+
+	/**
 	 * Makes a HTTP DELETE request to the specified $url with an optional array or string of $vars
 	 * Returns a Response object if the request was successful, false otherwise
 	 * @param string    [optional] $url
@@ -1069,7 +1080,7 @@ class Request extends Nette\Object
 			}
 
 		} else {
-			throw new BadStatusException('Response status: '.$response->getHeader('Status'), NULL, $response);
+			throw new BadStatusException('Response status: '.$response->getHeader('Status'), $this->info['http_code'], $response);
 		}
 
 		return $response;
