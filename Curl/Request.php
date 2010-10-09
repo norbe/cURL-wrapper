@@ -1057,7 +1057,7 @@ class Curl extends Nette\Object
 				unset($this->options['PROXY'], $this->options['PROXYPORT'], $this->options['PROXYTYPE'], $this->options['PROXYUSERPWD']);
 			}
 
-			$this->setRequestMethod = $method;
+			$this->setRequestMethod($method);
 			$this->setRequestOptions($url);
 			$this->setRequestHeaders();
 
