@@ -9,6 +9,7 @@ use Nette\Web\Uri;
 
 // we'll need this
 require_once __DIR__ . "/Response.php";
+require_once __DIR__ . "/exceptions.php";
 
 
 /**
@@ -1191,91 +1192,5 @@ class Request extends Nette\Object
 		}
 	}
 
-
-}
-
-
-
-/**
- * Exception thrown by cURL wrapper
- * @author Filip Procházka <hosiplan@kdyby.org>
- */
-class CurlException extends \Exception implements \Nette\IDebugPanel
-{
-	/** @var \Curl\Response */
-	var $response;
-
-
-	public function __construct($message, $code = 0, Response $response = NULL)
-	{
-		parent::__construct($message, $code);
-
-		$this->response = $response;
-	}
-
-
-
-	/**
-	 * @return \Curl\Response
-	 */
-	public function getResponse()
-	{
-		return $this->response;
-	}
-
-
-
-	/********************* interface Nette\IDebugPanel *********************/
-
-
-
-	/**
-	 * Returns HTML code for custom tab.
-	 * @return mixed
-	 */
-	public function getTab()
-	{
-		return 'Curl dump';
-	}
-
-
-
-	/**
-	 * Returns HTML code for custom panel.
-	 * @return mixed
-	 */
-	public function getPanel()
-	{
-		return $this->response ? $this->response->errorDump() : NULL;
-	}
-
-
-
-	/**
-	 * Returns panel ID.
-	 * @return string
-	 */
-	public function getId()
-	{
-		return __CLASS__;
-	}
-
-}
-
-
-/**
- * @author Filip Procházka <hosiplan@kdyby.org>
- */
-class BadStatusException extends CurlException
-{
-
-}
-
-
-/**
- * @author Filip Procházka <hosiplan@kdyby.org>
- */
-class FailedRequestException extends CurlException
-{
 
 }
