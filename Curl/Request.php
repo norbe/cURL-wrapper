@@ -3,6 +3,7 @@
 namespace Curl;
 
 use Nette;
+use Nette\Tools;
 
 
 // we'll need this
@@ -1218,7 +1219,7 @@ class Curl extends Nette\Object
 		}
 
 		// fix:Sairon http://forum.nette.org/cs/profile.php?id=1844 thx
-		if ($this->getFollowRedirects() AND strtolower(ini_get('safe_mode')) !== 'on' AND ini_get('open_basedir') == ""){
+		if ($this->followRedirects && !Tools::iniFlag('safe_mode') && ini_get('open_basedir') == ""){
 			$this->setOption('followlocation', TRUE);
 		}
 
