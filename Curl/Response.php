@@ -10,6 +10,12 @@ use Nette\String;
  * Parses the response from a cURL request into an object containing
  * the response body and an associative array of headers
  *
+ * <code>
+ * $response = new CurlResponse(curl_exec($curl_handle));
+ * echo $response->body;
+ * echo $response->headers['Status'];
+ * </code>
+ *
  * @package cURL
  * @author Sean Huber <shuber@huberry.com>
  * @author Filip Procházka <hosiplan@kdyby.org>
@@ -29,7 +35,7 @@ class Response extends Nette\Object
 	 *
 	 * @var string
 	 */
-	var $body = '';
+	private $Body = '';
 
 
 	/**
@@ -37,43 +43,36 @@ class Response extends Nette\Object
 	 *
 	 * @var array
 	 */
-	var $headers = array();
+	private $Headers = array();
 
 
 	/**
 	 * Contains reference for Request
 	 *
-	 * @var Curl
-	 * @access protected
+	 * @var \Curl\Request
 	 */
-	protected $Request;
+	private $Request;
 
 
 	/**
 	 * Contains resource for last downloaded file
 	 *
 	 * @var resource
-	 * @access protected
 	 */
-	protected $downloadedFile;
+	private $DownloadedFile;
 
 
 	/**
 	 * Accepts the result of a curl request as a string
 	 *
-	 * <code>
-	 * $response = new Curl\Response(curl_exec($curl_handle));
-	 * echo $response->body;
-	 * echo $response->headers['Status'];
-	 * </code>
-	 *
 	 * @param string $response
+	 * @param \Curl\Request $request
 	 */
 	public function __construct($response, Request $request = Null)
 	{
 		$this->Request = $request;
 
-		if( $this->Request->getMethod() === Request::DOWNLOAD ){
+		if( $this->request->method === Request::DOWNLOAD ){
 			$this->parseFile();
 
 		} else {
@@ -83,9 +82,9 @@ class Response extends Nette\Object
 			$headers = explode("\r\n", str_replace("\r\n\r\n", '', $headers_string));
 
 			# Remove headers from the response body
-			$this->body = str_replace($headers_string, '', $response);
+			$this->Body = str_replace($headers_string, '', $response);
 
-			$this->parseHeaders($headers);
+			$this->Headers = $this->parseHeaders($headers);
 		}
 	}
 
@@ -94,38 +93,43 @@ class Response extends Nette\Object
 	 * Parses headers from given list
 	 *
 	 * @param array $headers
+	 * @return array
 	 */
-	private function parseHeaders($headers)
+	public function parseHeaders($headers)
 	{
+		$found = array();
+
 		# Extract the version and status from the first header
 		$version_and_status = array_shift($headers);
 		$matches = String::match($version_and_status, self::VERSION_AND_STATUS);
 		if( count($matches) > 0 ){
-			$this->headers['Http-Version'] = $matches[1];
-			$this->headers['Status-Code'] = $matches[2];
-			$this->headers['Status'] = $matches[2].' '.$matches[3];
+			$found['Http-Version'] = $matches[1];
+			$found['Status-Code'] = $matches[2];
+			$found['Status'] = $matches[2].' '.$matches[3];
 		}
 
 		# Convert headers into an associative array
 		foreach ($headers as $header) {
 			$matches = String::match($header, self::HEADER_REGEXP);
-			$this->headers[$matches[1]] = $matches[2];
+			$found[$matches[1]] = $matches[2];
 		}
+
+		return $found;
 	}
 
 
 	/**
 	 * Fix downloaded file
 	 *
-	 * @return CurlResponse  provides a fluent interface
+	 * @return Curl\Response
 	 */
 	public function parseFile()
 	{
-		if( $this->Request->getMethod() === Curl::DOWNLOAD ){
-			$path_p = $this->Request->getDownloadPath();
-			@fclose($this->Request->getOption('FILE'));
+		if( $this->request->method === Request::DOWNLOAD ){
+			$path_p = $this->request->downloadPath;
+			@fclose($this->request->getOption('file'));
 
-			if( ($fp = fopen($this->Request->getFileProtocol() . '://' . $path_p, "rb")) === False ){
+			if( ($fp = fopen($this->request->fileProtocol . '://' . $path_p, "rb")) === False ){
 				throw new CurlException("Fopen error for file '{$path_p}'");
 			}
 
@@ -143,14 +147,14 @@ class Response extends Nette\Object
 			if( isset($matches[0][0]) ){
 				$headers_string = array_pop($matches[0]);
 				$headers = explode("\r\n", str_replace("\r\n\r\n", '', $headers_string));
-				$this->parseHeaders($headers);
+				$this->Headers = array_merge($this->Headers, $this->parseHeaders($headers));
 
 				fseek($fp, strlen($headers_string));
-// 				$this->Request->getFileProtocol();
+// 				$this->request->getFileProtocol();
 
-				$path_t = $this->Request->getDownloadPath() . '.tmp';
+				$path_t = $this->request->downloadPath . '.tmp';
 
-				if( ($ft = fopen($this->Request->getFileProtocol() . '://' . $path_t, "wb")) === False ){
+				if( ($ft = fopen($this->request->fileProtocol . '://' . $path_t, "wb")) === False ){
 					throw new CurlException("Write error for file '{$path_t}' ");
 				}
 
@@ -162,16 +166,20 @@ class Response extends Nette\Object
 				fclose($fp);
 				fclose($ft);
 
-				if( !@unlink($this->Request->getFileProtocol() . '://' . $path_p) ){
+				if( !@unlink($this->request->fileProtocol . '://' . $path_p) ){
 					throw new CurlException("Error while deleting file {$path_p} ");
 				}
 
-				if( !@rename($this->Request->getFileProtocol() . '://' . $path_t, $this->Request->getFileProtocol() . '://' . $path_p) ){
+				if( !@rename($this->request->fileProtocol . '://' . $path_t, $this->request->fileProtocol . '://' . $path_p) ){
 					throw new CurlException("Error while renaming file '{$path_t}' to '".basename($path_p)."'. ");
 				}
 
 				@chmod($path_p, 0755);
 
+			}
+
+			if (!$this->Headers) {
+				throw new CurlException("Headers parsing failed", NULL, $this);
 			}
 		}
 
@@ -182,7 +190,7 @@ class Response extends Nette\Object
 	 * Returns the response body
 	 *
 	 * <code>
-	 * $curl = new Curl;
+	 * $curl = new Request;
 	 * $response = $curl->get('google.com');
 	 * echo $response;  # => echo $response->body;
 	 * </code>
@@ -191,7 +199,7 @@ class Response extends Nette\Object
 	 */
 	public function __toString()
 	{
-		return $this->body;
+		return $this->Body;
 	}
 
 
@@ -200,7 +208,7 @@ class Response extends Nette\Object
 	 */
 	public function getBody()
 	{
-		return $this->body;
+		return $this->Body;
 	}
 
 
@@ -209,7 +217,7 @@ class Response extends Nette\Object
 	 */
 	public function getResponse()
 	{
-		return $this->body;
+		return $this->Body;
 	}
 
 
@@ -219,8 +227,8 @@ class Response extends Nette\Object
 	public function getQuery()
 	{
 		$contentType = NULL;
-		if (isset($this->headers['Content-Type'])) {
-			$contentType = $this->headers['Content-Type'];
+		if (isset($this->Headers['Content-Type'])) {
+			$contentType = $this->Headers['Content-Type'];
 		}
 
 		return \phpQuery\phpQuery::newDocument($this->body, $contentType);
@@ -229,7 +237,7 @@ class Response extends Nette\Object
 
 	/**
 	 * @param string $charset
-	 * @return CurlResponse 
+	 * @return \Curl\Response 
 	 */
 	public function convert($to = "UTF-8", $from = NULL)
 	{
@@ -241,7 +249,7 @@ class Response extends Nette\Object
 		}
 
 		if ($body = @iconv($from, $to, $this->body)) {
-			$this->body = $body;
+			$this->Body = $body;
 
 		} else {
 			throw new CurlException("Charset conversion from $from to $to failed");
@@ -253,24 +261,26 @@ class Response extends Nette\Object
 
 	/**
 	 * Returns the response headers
+	 * @return array
 	 */
 	public function getHeaders()
 	{
-		return $this->headers;
+		return $this->Headers;
 	}
 
 
 	/**
 	 * Returns specified header
+	 * @return string
 	 */
 	public function getHeader($header)
 	{
-		if( isset($this->headers[$header]) ){
-			return $this->headers[$header];
+		if( isset($this->Headers[$header]) ){
+			return $this->Headers[$header];
 
-		} else {
-			return Null;
 		}
+
+		return Null;
 	}
 
 
@@ -281,30 +291,54 @@ class Response extends Nette\Object
 	 */
 	public function openFile()
 	{
-		$path = $this->Request->getDownloadPath();
-		if( ($this->downloadedFile = fopen($this->Request->getFileProtocol() . '://' . $path, "r")) === False ){
+		$path = $this->request->downloadPath;
+		if( ($this->DownloadedFile = fopen($this->request->fileProtocol . '://' . $path, "r")) === FALSE ){
 			throw new CurlException("Read error for file '{$path}'");
 		}
 
-		return $this->downloadedFile;
+		return $this->DownloadedFile;
 	}
 
 
 	/**
 	 * Returns resource to downloaded file
-	 *
-	 * @return resource file stream
 	 */
 	public function closeFile()
 	{
-		return @fclose($this->downloadedFile);
+		return @fclose($this->DownloadedFile);
+	}
+
+
+
+	/**
+	 * Move uploaded file to new location.
+	 * @param  string
+	 * @return \Curl\Response
+	 */
+	public function moveFile($dest)
+	{
+		$dir = dirname($dest);
+		$file = $this->request->downloadPath;
+
+		if (@mkdir($dir, 0755, TRUE)) { // @ - $dir may already exist
+			chmod($dir, 0755);
+		}
+
+		if (!@rename($this->request->fileProtocol . '://' . $file, $dest)) {
+			throw new \InvalidStateException("Unable to move uploaded file '$file' to '$dest'.");
+		}
+		chmod($dest, 0644);
+
+		$this->request->downloadPath = $file;
+
+		return $this;
 	}
 
 
 	/**
 	 * Returns the Curl request object
 	 *
-	 * @return Curl
+	 * @return \Curl\Request
 	 */
 	public function getRequest()
 	{
