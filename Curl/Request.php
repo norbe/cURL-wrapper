@@ -1148,7 +1148,7 @@ class Request extends Nette\Object
 	{
 		$this->setOption('url', $url);
 
-		if ($post && is_array($post)) {
+		if ($post && is_array($post)) {
 			$post = http_build_query($post, '', '&');
 			$this->setOption('postfields', $post);
 		}
