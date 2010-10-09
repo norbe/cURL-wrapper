@@ -31,9 +31,7 @@ class Response extends Nette\Object
 
 	/**#@+ regexp's for parsing */
 	const HEADER_REGEXP = "#(?P<header>.*?)\:\s(?P<value>.*)#";
-	const HEADERS_REGEXP = "#HTTP/\d\.\d.*?$.*?\r\n\r\n#ims";
 	const VERSION_AND_STATUS = "#HTTP/(?P<version>\d\.\d)\s(?P<code>\d\d\d)\s(?P<status>.*)#";
-	const FILE_CONTENT_START = "\r\n\r\n";
 	/**#@- */
 
 	/**
@@ -75,9 +73,8 @@ class Response extends Nette\Object
 
 		} else {
 			# Extract headers from response
-			$matches = String::matchAll($response, self::HEADERS_REGEXP);
-			$headers_string = array_pop($matches[0]);
-			$headers = explode("\r\n", str_replace("\r\n\r\n", '', $headers_string));
+			$headers = String::split(substr($response, 0, $this->request->info['header_size']), "~[\n\r]+~", PREG_SPLIT_NO_EMPTY);
+			$this->Headers = array_merge($this->Headers, static::parseHeaders($headers));
 
 			# Remove headers from the response body
 			$this->Body = substr($response, $this->request->info['header_size']);
