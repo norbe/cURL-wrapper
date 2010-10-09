@@ -4,6 +4,7 @@ namespace Curl;
 
 use Nette;
 use Nette\Tools;
+use Nette\Web\Uri;
 
 
 // we'll need this
@@ -11,15 +12,30 @@ require_once __DIR__ . "/Response.php";
 
 
 /**
- * An advanced Curl wrapper
+ * An advanced cURL wrapper
  *
  * See the README for documentation/examples or http://php.net/curl for more information about the libcurl extension for PHP
  *
- * @package Curl
  * @author Sean Huber <shuber@huberry.com>
  * @author Filip Procházka <hosiplan@kdyby.org>
+ *
+ * @property string $cookieFile
+ * @property string $downloadFolder
+ * @property string $downloadPath
+ * @property-read string $error
+ * @property string $fileProtocol
+ * @property boolean $followRedirects
+ * @property array $headers
+ * @property-read string $info
+ * @property-read string $method
+ * @property array $options
+ * @property-read array $proxies
+ * @property boolean $returnTransfer
+ * @property string $referer
+ * @property string $userAgent
+ * @property string $url
  */
-class Curl extends Nette\Object
+class Request extends Nette\Object
 {
 
 	/**#@+ Available types of requests */
@@ -34,7 +50,6 @@ class Curl extends Nette\Object
 
 	/**
 	 * Used http method
-	 *
 	 * @var string
 	 */
 	private $Method;
@@ -48,7 +63,6 @@ class Curl extends Nette\Object
 
 	/**
 	 * The last downloaded file
-	 *
 	 * @var string
 	 */
 	private $DownloadPath;
@@ -56,7 +70,6 @@ class Curl extends Nette\Object
 
 	/**
 	 * An associative array of headers to send along with requests
-	 *
 	 * @var array
 	 */
 	private $Headers = array();
@@ -64,7 +77,6 @@ class Curl extends Nette\Object
 
 	/**
 	 * An associative array of CURLOPT options to send along with requests
-	 *
 	 * @var array
 	 */
 	private $Options = array();
@@ -77,16 +89,7 @@ class Curl extends Nette\Object
 
 
 	/**
-	 * Variables defined on request
-	 *
-	 * @var string
-	 */
-	private $vars;
-
-
-	/**
-	 * Available userAgents
-	 *
+	 * Available userAgents shortcuts
 	 * @var array
 	 */
 	public static $userAgents = array(
@@ -100,7 +103,6 @@ class Curl extends Nette\Object
 
 	/**
 	 * Stores an error string for the last request if one occurred
-	 *
 	 * @var string
 	 */
 	private $Error = '';
@@ -108,18 +110,16 @@ class Curl extends Nette\Object
 
 	/**
 	 * Stores informations about last request
-	 *
 	 * @var string
 	 */
 	private $Info = '';
 
 
 	/**
-	 * Stores resource handle for the current CURL request
-	 *
+	 * Stores resource handle for the current cURL request
 	 * @var resource
 	 */
-	private $requestResource;
+	private $RequestResource;
 
 
 	/**
@@ -130,7 +130,6 @@ class Curl extends Nette\Object
 
 	/**
 	 * Protocol name for file manipulation at server
-	 *
 	 * @var string
 	 */
 	private $FileProtocol = 'file';
@@ -138,7 +137,6 @@ class Curl extends Nette\Object
 
 	/**
 	 * Maximum number of request cycles after follow location
-	 *
 	 * @var int
 	 */
 	private $MaxCycles = 15;
@@ -146,7 +144,6 @@ class Curl extends Nette\Object
 
 	/**
 	 * List of status codes which should generate exception
-	 *
 	 * @var array
 	 */
 	static $badStatusCodes = array(
@@ -193,11 +190,9 @@ class Curl extends Nette\Object
 
 	/**
 	 * Initializes a Curl object
-	 *
-	 * <strike>Sets the $cookieFile to "curl_cookie.txt" in the current directory</strike>
 	 * Also sets the $userAgent to $_SERVER['HTTP_USER_AGENT'] if it exists, 'Curl/PHP '.PHP_VERSION.' (http://curl.kdyby.org/)' otherwise
-	 *
 	 * @param string $url
+	 * @throws \Curl\CurlException
 	 */
 	public function __construct($url = NULL)
 	{
@@ -209,8 +204,9 @@ class Curl extends Nette\Object
 			$this->url = $url;
 		}
 
-		// $this->cookieFile(dirname(__FILE__).DIRECTORY_SEPARATOR.'curl_cookie.txt');
+		$this->returnTransfer = TRUE;
 		$this->userAgent = isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : 'Curl/PHP '.PHP_VERSION.' (http://curl.kdyby.org/)';
+
 		$config = Nette\Environment::getConfig('curl');
 
 		foreach ((array)$config as $option => $value) {
@@ -246,14 +242,12 @@ class Curl extends Nette\Object
 
 
 	/**
-	 * Sets option for request
-	 *
 	 * @param string $ip
 	 * @param int $port
 	 * @param string $username
 	 * @param string $password
 	 * @param int $timeout
-	 * @return Curl
+	 * @return \Curl\Request
 	 */
 	public function addProxy($ip, $port = 3128, $username = NULL, $password = NULL, $timeout = 15)
 	{
@@ -270,8 +264,6 @@ class Curl extends Nette\Object
 
 
 	/**
-	 * Returns list of avalaible proxies
-	 *
 	 * @return string
 	 */
 	public function getProxies()
@@ -282,10 +274,9 @@ class Curl extends Nette\Object
 
 	/**
 	 * Sets option for request
-	 *
 	 * @param string $option
 	 * @param string $value
-	 * @return Curl
+	 * @return \Curl\Request
 	 */
 	public function setOption($option, $value)
 	{
@@ -302,7 +293,6 @@ class Curl extends Nette\Object
 
 	/**
 	 * Returns specific option value
-	 *
 	 * @param string $option
 	 * @return string
 	 */
@@ -319,9 +309,8 @@ class Curl extends Nette\Object
 
 	/**
 	 * Sets options for request
-	 *
 	 * @param array $options
-	 * @return Curl
+	 * @return \Curl\Request
 	 */
 	public function setOptions(array $options)
 	{
@@ -335,7 +324,6 @@ class Curl extends Nette\Object
 
 	/**
 	 * Returns all options
-	 *
 	 * @return string
 	 */
 	public function getOptions()
@@ -350,16 +338,19 @@ class Curl extends Nette\Object
 
 
 	/**
-	 * Sets header for request
-	 *
 	 * @param string $header
 	 * @param string $value
-	 * @return Curl
+	 * @return \Curl\Request
 	 */
-	public function setHeader($header, $value)
+	public function setHeader($header, $value = NULL)
 	{
-		if ($header != NULL && $value != NULL) {
-			$this->Headers[$header] = $value;
+		if ($header !== NULL) {
+			if ($value !== NULL) {
+				$this->Headers[$header] = $value;
+
+			} else {
+				unset($this->Headers[$header]);
+			}
 		}
 
 		return $this;
@@ -367,8 +358,6 @@ class Curl extends Nette\Object
 
 
 	/**
-	 * Returns specific header value
-	 *
 	 * @param string $header
 	 * @return string
 	 */
@@ -379,10 +368,8 @@ class Curl extends Nette\Object
 
 
 	/**
-	 * Sets array of headers for request
-	 *
 	 * @param array $headers
-	 * @return Curl
+	 * @return \Curl\Request
 	 */
 	public function setHeaders(array $headers)
 	{
@@ -395,8 +382,6 @@ class Curl extends Nette\Object
 
 
 	/**
-	 * Returns all headers
-	 *
 	 * @return array
 	 */
 	public function getHeaders()
@@ -406,10 +391,8 @@ class Curl extends Nette\Object
 
 
 	/**
-	 * Sets referer for request
-	 *
 	 * @param string $url
-	 * @return Curl
+	 * @return \Curl\Request
 	 */
 	public function setReferer($url = NULL)
 	{
@@ -430,9 +413,8 @@ class Curl extends Nette\Object
 
 	/**
 	 * Sets user agent for request
-	 *
 	 * @param string $userAgent
-	 * @return Curl
+	 * @return \Curl\Request
 	 */
 	public function setUserAgent($userAgent = NULL)
 	{
@@ -455,9 +437,8 @@ class Curl extends Nette\Object
 
 	/**
 	 * Sets whether follow redirects or not from request
-	 *
 	 * @param bool $follow
-	 * @return Curl
+	 * @return \Curl\Request
 	 */
 	public function setFollowRedirects($follow = TRUE)
 	{
@@ -469,7 +450,6 @@ class Curl extends Nette\Object
 
 	/**
 	 * Returns whether follow redirects or not from request
-	 *
 	 * @return bool
 	 */
 	public function getFollowRedirects()
@@ -480,9 +460,8 @@ class Curl extends Nette\Object
 
 	/**
 	 * Sets whether return result page or not
-	 *
 	 * @param bool $return
-	 * @return Curl
+	 * @return \Curl\Request
 	 */
 	public function setReturnTransfer($return = TRUE)
 	{
@@ -493,8 +472,6 @@ class Curl extends Nette\Object
 
 
 	/**
-	 * Returns whether return result page or not
-	 *
 	 * @return bool
 	 */
 	public function getReturnTransfer()
@@ -504,10 +481,8 @@ class Curl extends Nette\Object
 
 
 	/**
-	 * Sets URL for request
-	 *
 	 * @param string $url
-	 * @return Curl
+	 * @return \Curl\Request
 	 */
 	public function setUrl($url = NULL)
 	{
@@ -518,8 +493,6 @@ class Curl extends Nette\Object
 
 
 	/**
-	 * Returns requested URL
-	 *
 	 * @return string
 	 */
 	public function getUrl()
@@ -530,7 +503,6 @@ class Curl extends Nette\Object
 
 	/**
 	 * Returns used http method
-	 *
 	 * @return string
 	 */
 	public function getMethod()
@@ -541,7 +513,6 @@ class Curl extends Nette\Object
 
 	/**
 	 * Sets path for last downloaded file
-	 *
 	 * @param string $path
 	 * @return \Curl\Request
 	 */
@@ -555,7 +526,6 @@ class Curl extends Nette\Object
 
 	/**
 	 * Returns path for last downloaded file
-	 *
 	 * @return string
 	 */
 	public function getDownloadPath()
@@ -565,8 +535,18 @@ class Curl extends Nette\Object
 
 
 	/**
-	 * Returns used file protocol
-	 *
+	 * @param string $protocol
+	 * @return \Curl\Request
+	 */
+	public function setFileProtocol($protocol)
+	{
+		$this->FileProtocol = $protocol;
+
+		return $this;
+	}
+
+
+	/**
 	 * @return string
 	 */
 	public function getFileProtocol()
@@ -576,20 +556,9 @@ class Curl extends Nette\Object
 
 
 	/**
-	 * @param string $protocol
-	 */
-	public function setFileProtocol($protocol)
-	{
-		$this->FileProtocol = $protocol;
-	}
-
-
-	/**
-	 * Sets cookie file for request
-	 *
 	 * @param string $cookieFile
-	 * @throws CurlException
-	 * @return Curl
+	 * @throws \Curl\CurlException
+	 * @return \Curl\Request
 	 */
 	public function setCookieFile($cookieFile)
 	{
@@ -620,8 +589,6 @@ class Curl extends Nette\Object
 
 
 	/**
-	 * Returns cookieFile
-	 *
 	 * @return string
 	 */
 	public function getCookieFile()
@@ -631,11 +598,9 @@ class Curl extends Nette\Object
 
 
 	/**
-	 * Sets download folder for request
-	 *
 	 * @param string $downloadFolder
-	 * @throws CurlException
-	 * @return Curl
+	 * @throws \Curl\CurlException
+	 * @return \Curl\Request
 	 */
 	public function setDownloadFolder($downloadFolder)
 	{
@@ -658,21 +623,18 @@ class Curl extends Nette\Object
 
 
 	/**
-	 * Returns downloadFolder
-	 *
 	 * @return string
 	 */
 	public function getDownloadFolder()
 	{
-		return $this->downloadFolder;
+		return $this->DownloadFolder;
 	}
 
 
 	/**
 	 * Sets if all certificates are trusted in default
-	 *
 	 * @param bool $verify
-	 * @return Curl
+	 * @return \Curl\Request
 	 */
 	public function setCertificationVerify($verify = TRUE)
 	{
@@ -693,8 +655,8 @@ class Curl extends Nette\Object
 	 *
 	 * @param string $certificate
 	 * @param int $verifyhost
-	 * @throws CurlException
-	 * @return Curl
+	 * @throws \Curl\CurlException
+	 * @return \Curl\Request
 	 */
 	public function setTrustedCertificate($certificate, $verifyhost = 2)
 	{
@@ -729,8 +691,8 @@ class Curl extends Nette\Object
 	 *
 	 * @param string $directory
 	 * @param string $verifyhost
-	 * @throws CurlException
-	 * @return Curl
+	 * @throws \Curl\CurlException
+	 * @return \Curl\Request
 	 */
 	public function setTrustedCertificatesDirectory($directory, $verifyhost = 2)
 	{
@@ -740,7 +702,7 @@ class Curl extends Nette\Object
 		}
 
 		if (is_dir($certificate)) {
-			unset($this->Options['cainfo']);
+			unset($this->Options['CAINFO']);
 
 			$this->setOption('ssl_verifypeer', TRUE);
 			$this->setOption('ssl_verifyhost', $verifyhost); // 2=secure
@@ -756,24 +718,22 @@ class Curl extends Nette\Object
 
 	/**
 	 * Returns path to trusted certificate or certificates directory
-	 *
 	 * @return string
 	 */
 	public function getTrustedCertificatesPath()
 	{
-		if (isset($this->Options['capath'])) {
-			return $this->Options['capath'];
+		if (isset($this->Options['CAPATH'])) {
+			return $this->Options['CAPATH'];
 		}
 
-		if (isset($this->Options['cainfo'])) {
-			return $this->Options['cainfo'];
+		if (isset($this->Options['CAINFO'])) {
+			return $this->Options['CAINFO'];
 		}
 	}
 
 
 	/**
 	 * Returns the error string of the current request if one occurred
-	 *
 	 * @return string
 	 */
 	public function getError()
@@ -784,29 +744,25 @@ class Curl extends Nette\Object
 
 	/**
 	 * Makes a HTTP DELETE request to the specified $url with an optional array or string of $vars
-	 *
-	 * Returns a Curl\Response object if the request was successful, false otherwise
-	 *
+	 * Returns a Response object if the request was successful, false otherwise
 	 * @param string    [optional] $url
-	 * @param array $vars
+	 * @param array $post
 	 * @return \Curl\Response
 	 */
-	public function delete($url = NULL, $vars = array())
+	public function delete($url = NULL, $post = array())
 	{
 		if (!empty($this->url)) {
-			$vars = $url;
+			$post = $url;
 			$url = $this->url;
 		}
 
-		return $this->request(self::DELETE, $url, $vars);
+		return $this->sendRequest(self::DELETE, $url, $post);
 	}
 
 
 	/**
 	 * Makes a HTTP GET request to the specified $url with an optional array or string of $vars
-	 *
-	 * Returns a Curl\Response object if the request was successful, false otherwise
-	 *
+	 * Returns a Response object if the request was successful, false otherwise
 	 * @param string    [optional] $url
 	 * @param array $vars
 	 * @return \Curl\Response
@@ -814,7 +770,7 @@ class Curl extends Nette\Object
 	public function get($url = NULL, $vars = array())
 	{
 		if (!empty($this->url)) {
-			$vars = $url;
+			$post = $url;
 			$url = $this->url;
 		}
 
@@ -823,80 +779,79 @@ class Curl extends Nette\Object
 			$url .= (is_string($vars)) ? $vars : http_build_query($vars, '', '&');
 		}
 
-		return $this->request(self::GET, $url);
+	return $this->sendRequest(self::GET, $url);
 	}
 
 
 	/**
 	 * Makes a HTTP HEAD request to the specified $url with an optional array or string of $vars
-	 *
-	 * Returns a Curl\Response object if the request was successful, false otherwise
-	 *
+	 * Returns a Response object if the request was successful, false otherwise
 	 * @param string    [optional] $url
-	 * @param array $vars
+	 * @param array $post
 	 * @return \Curl\Response
 	 */
-	public function head($url = NULL, $vars = array())
+	public function head($url = NULL, $post = array())
 	{
 		if (!empty($this->url)) {
-			$vars = $url;
+			$post = $url;
 			$url = $this->url;
 		}
 
-		return $this->request(self::HEAD, $url, $vars);
+		return $this->sendRequest(self::HEAD, $url, $post);
 	}
 
 
 	/**
 	 * Makes a HTTP POST request to the specified $url with an optional array or string of $vars
-	 *
+	 * Returns a Response object if the request was successful, false otherwise
 	 * @param string    [optional] $url
-	 * @param array $vars
+	 * @param array $post
+	 * @throws \Curl\CurlException
 	 * @return \Curl\Response
 	 */
-	public function post($url = NULL, $vars = array())
+	public function post($url = NULL, $post = array())
 	{
 		if (!empty($this->url)) {
-			$vars = $url;
+			$post = $url;
 			$url = $this->url;
 		}
 
-		return $this->request(self::POST, $url, $vars);
+		if (!$post || !is_array($post)){
+			throw new CurlException("Empty post fields, use Request::get(\$url) instead.");
+		}
+
+		return $this->sendRequest(self::POST, $url, $post);
 	}
 
 
 	/**
 	 * Makes a HTTP PUT request to the specified $url with an optional array or string of $vars
-	 *
-	 * Returns a Curl\Response object if the request was successful, false otherwise
-	 *
+	 * Returns a Response object if the request was successful, false otherwise
 	 * @param string    [optional] $url
-	 * @param array $vars
+	 * @param array $post
 	 * @return \Curl\Response
 	 */
-	public function put($url = NULL, $vars = array())
+	public function put($url = NULL, $post = array())
 	{
 		if (!empty($this->url)) {
-			$vars = $url;
+			$post = $url;
 			$url = $this->url;
 		}
 
-		return $this->request(self::PUT, $url, $vars);
+		return $this->sendRequest(self::PUT, $url, $post);
 	}
 
 
 	/**
 	 * Downloads file from specified url and saves as fileName if isset or if not the name will be taken from url
-	 *
-	 * Returns a boolean value whatever a download was succesful and file was downloaded to $this->downloadFolder.$fileName
-	 *
+	 * Returns a Response object if the request was successful, false otherwise
 	 * @param string [optional] $url
 	 * @param string $fileName
-	 * @param array $vars
-	 * @throws CurlException
+	 * @param array $post
+	 * @throws \Curl\CurlException
 	 * @return \Curl\Response
 	 */
-	public function download($url = NULL, $fileName = NULL, $vars = array())
+	public function download($url = NULL, $fileName = NULL, $post = array())
 	{
 		if (!empty($this->url)) {
 			$fileName = $url;
@@ -920,12 +875,7 @@ class Curl extends Nette\Object
 		$this->setOption('file', $fp);
 		$this->setOption('binarytransfer', TRUE);
 
-		try{
-			$response = $this->request(self::DOWNLOAD, $url, $vars);
-
-		} catch (CurlException $e) {
-			throw new CurlException("Error during file download: ".$e->getMessage());
-		}
+		$response = $this->sendRequest(self::DOWNLOAD, $url, $post);
 
 		@fclose($fp);
 
@@ -935,15 +885,13 @@ class Curl extends Nette\Object
 
 	/* *
 	 * Uploads file
-	 *
 	 * Returns a bool value whether an upload was succesful
-	 *
 	 * @param string $file
 	 * @param string $url
 	 * @param string $username
 	 * @param string $password
 	 * @param int $timeout
-	 * @throws CurlException
+	 * @throws \Curl\CurlException
 	 * @return bool
 	 */
 // 	public function ftpUpload($file, $url, $username = NULL, $password = NULL, $timeout = 300)
@@ -968,7 +916,7 @@ class Curl extends Nette\Object
 // 		$this->setOption('INFILE', $fp);
 // 		$this->setOption('INFILESIZE', filesize($src));
 //
-// 		$this->request(self::UPLOAD_FTP, $url, $vars);
+// 		$this->sendRequest(self::UPLOAD_FTP, $url, $vars);
 //
 // 		fclose($fp);
 //
@@ -978,17 +926,15 @@ class Curl extends Nette\Object
 
 	/**
 	 * Makes an HTTP request of the specified $method to a $url with an optional array or string of $vars
-	 *
 	 * Returns a Curl\Response object if the request was successful, false otherwise
-	 *
 	 * @param string $method
 	 * @param string $url
-	 * @param array $vars
+	 * @param array $post
 	 * @param int $cycles
-	 * @throws CurlException
+	 * @throws \Curl\CurlException
 	 * @return \Curl\Response
 	 */
-	public function request($method, $url, $vars = array(), $cycles = 1)
+	public function sendRequest($method, $url, $post = array(), $cycles = 1)
 	{
 		if ($cycles > $this->MaxCycles) {
 				throw new CurlException("Redirect loop");
@@ -997,10 +943,6 @@ class Curl extends Nette\Object
 		$this->Error = NULL;
 		$used_proxies = 0;
 
-		if (is_array($vars)) {
-			$this->vars = http_build_query($vars, '', '&');
-		}
-
 		if (!is_string($url) AND $url !== '') {
 			throw new CurlException("Invalid URL: " . $url);
 		}
@@ -1008,7 +950,7 @@ class Curl extends Nette\Object
 		do{
 			$this->closeRequest();
 
-			$this->requestResource = curl_init();
+			$this->RequestResource = curl_init();
 
 			if (count($this->proxies) > $used_proxies) {
 				//$this->setOption['HTTPPROXYTUNNEL'] = TRUE;
@@ -1028,14 +970,14 @@ class Curl extends Nette\Object
 			}
 
 			$this->setRequestMethod($method);
-			$this->setRequestOptions($url);
+			$this->setRequestOptions($url, $post);
 			$this->setRequestHeaders();
 
-			$response = curl_exec($this->requestResource);
-			$this->Error = curl_errno($this->requestResource).' - '.curl_error($this->requestResource);
-			$this->Info = curl_getinfo($this->requestResource);
+			$response = curl_exec($this->RequestResource);
+			$this->Error = curl_errno($this->RequestResource).' - '.curl_error($this->RequestResource);
+			$this->Info = curl_getinfo($this->RequestResource);
 
-		} while (curl_errno($this->requestResource) == 6 AND count($this->proxies) < $used_proxies) ;
+		} while (curl_errno($this->RequestResource) == 6 AND count($this->proxies) < $used_proxies) ;
 
 		$this->closeRequest();
 
@@ -1059,8 +1001,8 @@ class Curl extends Nette\Object
 			$response_headers = $response->getHeaders();
 
 			if (isset($response_headers['Location']) AND $this->getFollowRedirects())  {
-				$url = new Nette\Web\Uri($response_headers['Location']);
-				$lastUrl = new Nette\Web\Uri($this->info['url']);
+				$url = new Uri($response_headers['Location']);
+				$lastUrl = new Uri($this->info['url']);
 
 				if (empty($url->scheme)) { // scheme
 					if (empty($lastUrl->scheme)) {
@@ -1082,7 +1024,7 @@ class Curl extends Nette\Object
 					$url->path = $lastUrl->path;
 				}
 
-				$response = $this->request($this->getMethod(), (string)$url, array(), ++$cycles);
+				$response = $this->sendRequest($this->getMethod(), (string)$url, $post, ++$cycles);
 			}
 
 		} else {
@@ -1098,11 +1040,11 @@ class Curl extends Nette\Object
 	 */
 	private function closeRequest()
 	{
-		if (gettype($this->requestResource) == 'resource' AND get_resource_type($this->requestResource) == 'curl') {
-			@curl_close($this->requestResource);
+		if (gettype($this->RequestResource) == 'resource' AND get_resource_type($this->RequestResource) == 'curl') {
+			@curl_close($this->RequestResource);
 
 		} else {
-			$this->requestResource = NULL;
+			$this->RequestResource = NULL;
 		}
 	}
 
@@ -1118,14 +1060,13 @@ class Curl extends Nette\Object
 		}
 
 		if (count($this->headers) > 0) {
-			curl_setopt($this->requestResource, CURLOPT_HTTPHEADER, $headers);
+			curl_setopt($this->RequestResource, CURLOPT_HTTPHEADER, $headers);
 		}
 	}
 
 
 	/**
 	 * Set the associated Curl options for a request method
-	 *
 	 * @param string $method
 	 */
 	private function setRequestMethod($method)
@@ -1134,24 +1075,25 @@ class Curl extends Nette\Object
 
 		switch ($this->method) {
 			case self::HEAD:
-				curl_setopt($this->requestResource, CURLOPT_NOBODY, TRUE);
+				$this->setOption('nobody', TRUE);
 				break;
 
 			case self::GET:
 			case self::DOWNLOAD:
-				curl_setopt($this->requestResource, CURLOPT_HTTPGET, TRUE);
+				$this->setOption('httpget', TRUE);
 				break;
 
 			case self::POST:
-				curl_setopt($this->requestResource, CURLOPT_POST, TRUE);
+				$this->setOption('post', TRUE);
 				break;
 
 //			case self::UPLOAD_FTP:
-//				curl_setopt($this->requestResource, CURLOPT_UPLOAD, TRUE);
+//				curl_setopt($this->RequestResource, CURLOPT_UPLOAD, TRUE);
+//				$this->setOption('upload', TRUE);
 //				break;
 
 			default:
-				curl_setopt($this->requestResource, CURLOPT_CUSTOMREQUEST, $this->getMethod());
+				$this->setOption('customrequest', $this->Method);
 				break;
 		}
 	}
@@ -1159,15 +1101,15 @@ class Curl extends Nette\Object
 
 	/**
 	 * Sets the CURLOPT options for the current request
-	 *
 	 * @param string $url
 	 */
-	private function setRequestOptions($url)
+	private function setRequestOptions($url, $post = array())
 	{
 		$this->setOption('url', $url);
 
-		if ($this->vars) {
-			$this->setOption('postfields', $this->getVars());
+		if ($post && is_array($post)) {
+			$post = http_build_query($post, '', '&');
+			$this->setOption('postfields', $post);
 		}
 
 		// Prepend headers in response
@@ -1178,10 +1120,6 @@ class Curl extends Nette\Object
 			$this->setOption('ssl_verifypeer', FALSE);
 		}
 
-		if ($this->returnTransfer === NULL) {
-			$this->returnTransfer = TRUE;
-		}
-
 		// fix:Sairon http://forum.nette.org/cs/profile.php?id=1844 thx
 		if ($this->followRedirects === NULL && !Tools::iniFlag('safe_mode') && ini_get('open_basedir') == ""){
 			$this->followRedirects = TRUE;
@@ -1189,7 +1127,7 @@ class Curl extends Nette\Object
 
 		// Set all cURL options
 		foreach ($this->Options as $option => $value) {
-			curl_setopt($this->requestResource, constant('CURLOPT_'.$option), $value);
+			curl_setopt($this->RequestResource, constant('CURLOPT_'.$option), $value);
 		}
 	}
 
