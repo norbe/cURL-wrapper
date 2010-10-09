@@ -557,13 +557,14 @@ class Request extends Nette\Object
 
 	/**
 	 * @param string $cookieFile
-	 * @throws \Curl\CurlException
+	 * @throws \InvalidArgumentException
+	 * @throws \InvalidStateException
 	 * @return \Curl\Request
 	 */
 	public function setCookieFile($cookieFile)
 	{
 		if (is_string($cookieFile) AND $cookieFile === "") {
-			throw new CurlException("Invalid argument \$cookieFile");
+			throw new \InvalidArgumentException("Invalid argument \$cookieFile");
 		}
 
 		if (is_writable($cookieFile)) {
@@ -571,7 +572,7 @@ class Request extends Nette\Object
 
 		} elseif (is_writable(dirname($cookieFile))) {
 			if (($fp = @fopen($this->FileProtocol . '://' . $cookieFile, "wb")) === FALSE) {
-				throw new CurlException("Write error for file '" . $cookieFile . "'");
+				throw new \InvalidStateException("Write error for file '" . $cookieFile . "'");
 			}
 
 			fwrite($fp,"");
@@ -581,7 +582,7 @@ class Request extends Nette\Object
 			$this->setOption('cookiejar', $cookieFile);
 
 		} else {
-			throw new CurlException("You have to make writable '" . $cookieFile . "'");
+			throw new \InvalidStateException("You have to make writable '" . $cookieFile . "'");
 		}
 
 		return $this;
@@ -599,13 +600,14 @@ class Request extends Nette\Object
 
 	/**
 	 * @param string $downloadFolder
-	 * @throws \Curl\CurlException
+	 * @throws \InvalidStateException
+	 * @throws \InvalidArgumentException
 	 * @return \Curl\Request
 	 */
 	public function setDownloadFolder($downloadFolder)
 	{
 		if (is_string($downloadFolder) AND $downloadFolder === "") {
-			throw new CurlException("Invalid argument \$downloadFolder");
+			throw new \InvalidArgumentException("Invalid argument \$downloadFolder");
 		}
 
 		@mkdir($downloadFolder); // may already exists
@@ -615,7 +617,7 @@ class Request extends Nette\Object
 			$this->DownloadFolder = $downloadFolder;
 
 		} else {
-			throw new CurlException("You have to create download folder '".$downloadFolder."' and make it writable!");
+			throw new \InvalidStateException("You have to create download folder '".$downloadFolder."' and make it writable!");
 		}
 
 		return $this;
@@ -655,7 +657,7 @@ class Request extends Nette\Object
 	 *
 	 * @param string $certificate
 	 * @param int $verifyhost
-	 * @throws \Curl\CurlException
+	 * @throws \InvalidStateException
 	 * @return \Curl\Request
 	 */
 	public function setTrustedCertificate($certificate, $verifyhost = 2)
@@ -673,7 +675,7 @@ class Request extends Nette\Object
 			$this->setOption('cainfo', $certificate);
 
 		} else {
-			throw new CurlException("Certificate ".$certificate." is not readable!");
+			throw new \InvalidStateException("Certificate ".$certificate." is not readable!");
 		}
 
 		return $this;
@@ -848,7 +850,7 @@ class Request extends Nette\Object
 	 * @param string [optional] $url
 	 * @param string $fileName
 	 * @param array $post
-	 * @throws \Curl\CurlException
+	 * @throws \InvalidStateException
 	 * @return \Curl\Response
 	 */
 	public function download($url = NULL, $fileName = NULL, $post = array())
@@ -863,13 +865,13 @@ class Request extends Nette\Object
 		}
 
 		if (!is_dir($this->downloadFolder)) {
-			throw new CurlException("You have to setup existing and writable folder using ".__CLASS__."::setDownloadFolder().");
+			throw new \InvalidStateException("You have to setup existing and writable folder using ".__CLASS__."::setDownloadFolder().");
 		}
 
 		$this->DownloadPath = $this->downloadFolder . '/' . basename($fileName);
 
 		if (($fp = fopen($this->fileProtocol . '://' . $this->DownloadPath, "wb")) === FALSE) {
-			throw new CurlException("Write error for file '{$this->DownloadPath}'");
+			throw new \InvalidStateException("Write error for file '{$this->DownloadPath}'");
 		}
 
 		$this->setOption('file', $fp);
@@ -932,6 +934,9 @@ class Request extends Nette\Object
 	 * @param array $post
 	 * @param int $cycles
 	 * @throws \Curl\CurlException
+	 * @throws \BadStatusException
+	 * @throws \FailedRequestException
+	 * @throws \InvalidStateException
 	 * @return \Curl\Response
 	 */
 	public function sendRequest($method, $url, $post = array(), $cycles = 1)
@@ -985,15 +990,7 @@ class Request extends Nette\Object
 			$response = new Response($response, $this);
 
 		} else {
-//			if ($this->info['http_code'] == 400) {
-//				throw new CurlException('Bad request');
-//
-//			} elseif ($this->info['http_code'] == 401) {
-//				throw new CurlException('Permission Denied');
-//
-//			} else {
-			throw new CurlException($this->error);
-//			}
+			throw new FailedRequestException($this->error, $this->info['http_code']);
 		}
 
 		if (!in_array($response->getHeader('Status-Code'), self::$badStatusCodes)) {
@@ -1006,7 +1003,7 @@ class Request extends Nette\Object
 
 				if (empty($url->scheme)) { // scheme
 					if (empty($lastUrl->scheme)) {
-						throw new CurlException("Missign URL scheme!");
+						throw new \InvalidStateException("Missign URL scheme!");
 					}
 
 					$url->scheme = $lastUrl->scheme;
@@ -1014,7 +1011,7 @@ class Request extends Nette\Object
 
 				if (empty($url->host)) { // host
 					if (empty($lastUrl->host)) {
-						throw new CurlException("Missign URL host!");
+						throw new \InvalidStateException("Missign URL host!");
 					}
 
 					$url->host = $lastUrl->host;
@@ -1028,7 +1025,7 @@ class Request extends Nette\Object
 			}
 
 		} else {
-			throw new CurlException('Response status: '.$response->getHeader('Status'), NULL, $response);
+			throw new BadStatusException('Response status: '.$response->getHeader('Status'), NULL, $response);
 		}
 
 		return $response;
@@ -1137,14 +1134,10 @@ class Request extends Nette\Object
 
 
 /**
- * Exception thrown by Curl wrapper
- *
- * @package Curl
+ * Exception thrown by cURL wrapper
  * @author Filip Procházka <hosiplan@kdyby.org>
- *
- * @property-read \Curl\Response $response
  */
-class CurlException extends \Exception
+class CurlException extends \Exception implements \Nette\IDebugPanel
 {
 	/** @var \Curl\Response */
 	var $response;
@@ -1166,5 +1159,60 @@ class CurlException extends \Exception
 	{
 		return $this->response;
 	}
+
+
+
+	/********************* interface Nette\IDebugPanel *********************/
+
+
+
+	/**
+	 * Returns HTML code for custom tab.
+	 * @return mixed
+	 */
+	public function getTab()
+	{
+		return 'Curl dump';
+	}
+
+
+
+	/**
+	 * Returns HTML code for custom panel.
+	 * @return mixed
+	 */
+	public function getPanel()
+	{
+		return $this->response ? $this->response->errorDump() : NULL;
+	}
+
+
+
+	/**
+	 * Returns panel ID.
+	 * @return string
+	 */
+	public function getId()
+	{
+		return __CLASS__;
+	}
+
+}
+
+
+/**
+ * @author Filip Procházka <hosiplan@kdyby.org>
+ */
+class BadStatusException extends CurlException
+{
+
+}
+
+
+/**
+ * @author Filip Procházka <hosiplan@kdyby.org>
+ */
+class FailedRequestException extends CurlException
+{
 
 }

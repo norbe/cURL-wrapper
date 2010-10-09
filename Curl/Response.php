@@ -111,6 +111,8 @@ class Response extends Nette\Object
 
 	/**
 	 * Fix downloaded file
+	 * @throws \Curl\CurlException
+	 * @throws \InvalidStateException
 	 * @return \Curl\Response
 	 */
 	public function parseFile()
@@ -120,7 +122,7 @@ class Response extends Nette\Object
 			@fclose($this->request->getOption('file'));
 
 			if (($fp = @fopen($this->request->fileProtocol . '://' . $path_p, "rb")) === FALSE) {
-				throw new CurlException("Fopen error for file '{$path_p}'");
+				throw new \InvalidStateException("Fopen error for file '{$path_p}'");
 			}
 
 			$rows = array();
@@ -145,7 +147,7 @@ class Response extends Nette\Object
 				$path_t = $this->request->downloadPath . '.tmp';
 
 				if (($ft = @fopen($this->request->fileProtocol . '://' . $path_t, "wb")) === FALSE) {
-					throw new CurlException("Write error for file '{$path_t}' ");
+					throw new \InvalidStateException("Write error for file '{$path_t}' ");
 				}
 
 				while (!feof($fp)) {
@@ -157,11 +159,11 @@ class Response extends Nette\Object
 				@fclose($ft);
 
 				if (!@unlink($this->request->fileProtocol . '://' . $path_p)) {
-					throw new CurlException("Error while deleting file {$path_p} ");
+					throw new \InvalidStateException("Error while deleting file {$path_p} ");
 				}
 
 				if (!@rename($this->request->fileProtocol . '://' . $path_t, $this->request->fileProtocol . '://' . $path_p)) {
-					throw new CurlException("Error while renaming file '{$path_t}' to '".basename($path_p)."'. ");
+					throw new \InvalidStateException("Error while renaming file '{$path_t}' to '".basename($path_p)."'. ");
 				}
 
 				@chmod($path_p, 0755);
@@ -279,13 +281,14 @@ class Response extends Nette\Object
 
 	/**
 	 * Returns resource to downloaded file
+	 * @throws \InvalidStateException
 	 * @return resource
 	 */
 	public function openFile()
 	{
 		$path = $this->request->downloadPath;
 		if (($this->DownloadedFile = fopen($this->request->fileProtocol . '://' . $path, "r")) === FALSE) {
-			throw new CurlException("Read error for file '{$path}'");
+			throw new \InvalidStateException("Read error for file '{$path}'");
 		}
 
 		return $this->DownloadedFile;
@@ -305,6 +308,7 @@ class Response extends Nette\Object
 	/**
 	 * Move uploaded file to new location.
 	 * @param  string
+	 * @throws \InvalidStateException
 	 * @return \Curl\Response
 	 */
 	public function moveFile($dest)
@@ -334,6 +338,20 @@ class Response extends Nette\Object
 	public function getRequest()
 	{
 		return $this->Request;
+	}
+
+
+	/**
+	 * @return string
+	 */
+	public function errorDump()
+	{
+		$request = $this->Request;
+		$response = $this;
+
+		ob_start();
+		require_once "panel.phtml";
+		return ob_get_clean();
 	}
 
 
