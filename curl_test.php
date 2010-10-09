@@ -21,6 +21,7 @@ Nette\Debug::enable();
 Nette\Debug::$strictMode = True;
 
 Nette\Environment::loadConfig('config.ini');
+$config = (array)Nette\Environment::getConfig('curl');
 
 
 function proxy(&$test)
@@ -30,7 +31,7 @@ function proxy(&$test)
 
 
 if( true ){ // test 1: get
-	$test = new Request("http://curl.kdyby.org/prevodnik.asm.zdrojak");
+	$test = new Request("http://curl.kdyby.org/prevodnik.asm.zdrojak", $config);
 // 	$test = new Curl("http://iskladka.cz/iCopy/downloadBalancer.php?file=1222561395_obava_bojov+cz.avi&ticket=pc1660-1265493063.25");
 
 
@@ -54,7 +55,7 @@ if( true ){ // test 1: get
 
 
 if( true ){ // test 2: get non existing file
-	$test = new Request("http://curl.kdyby.org/prevodnik.asm.zdrojak.nonexisting");
+	$test = new Request("http://curl.kdyby.org/prevodnik.asm.zdrojak.nonexisting", $config);
 
 
 	echo "<hr>test 2: get 404 ... init ok<hr>", "<h2>Setup:</h2>";
@@ -93,7 +94,7 @@ if( true ){ // test 2: get non existing file
 
 
 if( true ){ // test 3: get secured file
-	$test = new Request("http://curl.kdyby.org/secured.php");
+	$test = new Request("http://curl.kdyby.org/secured.php", $config);
 
 
 	echo "<hr>test 3: get secured ... init ok<hr>", "<h2>Setup:</h2>";
@@ -131,7 +132,7 @@ if( true ){ // test 3: get secured file
 
 
 if( true ){ // test 4: post
-	$test = new Request("http://curl.kdyby.org/dump_post.php");
+	$test = new Request("http://curl.kdyby.org/dump_post.php", $config);
 
 	echo "<hr>test 4: post ... init ok<hr>", "<h2>Setup:</h2>";
 
@@ -158,7 +159,7 @@ if( true ){ // test 4: post
 
 
 if( true ){ // test 5: download
-	$test = new Request("http://curl.kdyby.org/prevodnik.asm.zdrojak");
+	$test = new Request("http://curl.kdyby.org/prevodnik.asm.zdrojak", $config);
 
 	echo "<hr>test 5: download ... init ok<hr>", "<h2>Setup:</h2>";
 

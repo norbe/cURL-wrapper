@@ -195,7 +195,7 @@ class Request extends Nette\Object
 	 * @param string $url
 	 * @throws \Curl\CurlException
 	 */
-	public function __construct($url = NULL)
+	public function __construct($url = NULL, $config = array())
 	{
 		if (!function_exists('curl_init')) {
 			throw new CurlException("Curl extension is not loaded!");
@@ -208,9 +208,17 @@ class Request extends Nette\Object
 		$this->returnTransfer = TRUE;
 		$this->userAgent = isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : 'Curl/PHP '.PHP_VERSION.' (http://curl.kdyby.org/)';
 
-		$config = Nette\Environment::getConfig('curl');
+		$this->configure($config);
+	}
 
-		foreach ((array)$config as $option => $value) {
+
+	/**
+	 * Configures Request
+	 * @param array $config
+	 */
+	public function configure(array $config)
+	{
+		foreach ($config as $option => $value) {
 			if ($option == 'cookieFile') {
 				$this->setCookieFile($value);
 
