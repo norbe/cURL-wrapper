@@ -6,7 +6,7 @@ use Nette;
 
 
 // we'll need this
-require_once __DIR__ . "/CurlResponse.php";
+require_once __DIR__ . "/Response.php";
 
 
 /**
@@ -814,11 +814,11 @@ class Curl extends Nette\Object
 	/**
 	 * Makes a HTTP DELETE request to the specified $url with an optional array or string of $vars
 	 *
-	 * Returns a CurlResponse object if the request was successful, false otherwise
+	 * Returns a Curl\Response object if the request was successful, false otherwise
 	 *
 	 * @param string    [optional] $url
 	 * @param array $vars
-	 * @return CurlResponse
+	 * @return \Curl\Response
 	 */
 	public function delete($url = NULL, $vars = array())
 	{
@@ -834,11 +834,11 @@ class Curl extends Nette\Object
 	/**
 	 * Makes a HTTP GET request to the specified $url with an optional array or string of $vars
 	 *
-	 * Returns a CurlResponse object if the request was successful, false otherwise
+	 * Returns a Curl\Response object if the request was successful, false otherwise
 	 *
 	 * @param string    [optional] $url
 	 * @param array $vars
-	 * @return CurlResponse
+	 * @return \Curl\Response
 	 */
 	public function get($url = NULL, $vars = array())
 	{
@@ -859,11 +859,11 @@ class Curl extends Nette\Object
 	/**
 	 * Makes a HTTP HEAD request to the specified $url with an optional array or string of $vars
 	 *
-	 * Returns a CurlResponse object if the request was successful, false otherwise
+	 * Returns a Curl\Response object if the request was successful, false otherwise
 	 *
 	 * @param string    [optional] $url
 	 * @param array $vars
-	 * @return CurlResponse
+	 * @return \Curl\Response
 	 */
 	public function head($url = NULL, $vars = array())
 	{
@@ -881,7 +881,7 @@ class Curl extends Nette\Object
 	 *
 	 * @param string    [optional] $url
 	 * @param array $vars
-	 * @return CurlResponse
+	 * @return \Curl\Response
 	 */
 	public function post($url = NULL, $vars = array())
 	{
@@ -897,11 +897,11 @@ class Curl extends Nette\Object
 	/**
 	 * Makes a HTTP PUT request to the specified $url with an optional array or string of $vars
 	 *
-	 * Returns a CurlResponse object if the request was successful, false otherwise
+	 * Returns a Curl\Response object if the request was successful, false otherwise
 	 *
 	 * @param string    [optional] $url
 	 * @param array $vars
-	 * @return CurlResponse
+	 * @return \Curl\Response
 	 */
 	public function put($url = NULL, $vars = array())
 	{
@@ -923,7 +923,7 @@ class Curl extends Nette\Object
 	 * @param string $fileName
 	 * @param array $vars
 	 * @throws CurlException
-	 * @return CurlResponse
+	 * @return \Curl\Response
 	 */
 	public function download($url = NULL, $fileName = NULL, $vars = array())
 	{
@@ -1008,14 +1008,14 @@ class Curl extends Nette\Object
 	/**
 	 * Makes an HTTP request of the specified $method to a $url with an optional array or string of $vars
 	 *
-	 * Returns a CurlResponse object if the request was successful, false otherwise
+	 * Returns a Curl\Response object if the request was successful, false otherwise
 	 *
 	 * @param string $method
 	 * @param string $url
 	 * @param array $vars
 	 * @param int $cycles
 	 * @throws CurlException
-	 * @return CurlResponse
+	 * @return \Curl\Response
 	 */
 	public function request($method, $url, $vars = array(), $cycles = 1)
 	{
@@ -1069,7 +1069,7 @@ class Curl extends Nette\Object
 		$this->closeRequest();
 
 		if ($response) {
-			$response = new CurlResponse($response, $this);
+			$response = new Response($response, $this);
 
 		} else {
 //			if ($this->info['http_code'] == 400) {
@@ -1243,15 +1243,15 @@ class Curl extends Nette\Object
  * @package Curl
  * @author Filip Procházka <hosiplan@kdyby.org>
  *
- * @property-read \Curl\CurlResponse $response
+ * @property-read \Curl\Response $response
  */
 class CurlException extends \Exception
 {
-	/** @var \Curl\CurlResponse */
+	/** @var \Curl\Response */
 	var $response;
 
 
-	public function __construct($message, $code = 0, CurlResponse $response = NULL)
+	public function __construct($message, $code = 0, Response $response = NULL)
 	{
 		parent::__construct($message, $code);
 
@@ -1261,7 +1261,7 @@ class CurlException extends \Exception
 
 
 	/**
-	 * @return \Curl\CurlResponse
+	 * @return \Curl\Response
 	 */
 	public function getResponse()
 	{

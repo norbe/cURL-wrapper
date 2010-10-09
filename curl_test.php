@@ -8,9 +8,9 @@
  */
 
 require_once dirname(__FILE__) . '/Nette/loader.php';
-require_once dirname(__FILE__) . '/Curl/Curl.php';
+require_once dirname(__FILE__) . '/Curl/Request.php';
 
-use Curl\Curl,
+use Curl\Request,
 	Curl\CurlException;
 
 // register wrapper safe for file manipulation
@@ -30,7 +30,7 @@ function proxy(&$test)
 
 
 if( true ){ // test 1: get
-	$test = new Curl("http://curl.kdyby.org/prevodnik.asm.zdrojak");
+	$test = new Request("http://curl.kdyby.org/prevodnik.asm.zdrojak");
 // 	$test = new Curl("http://iskladka.cz/iCopy/downloadBalancer.php?file=1222561395_obava_bojov+cz.avi&ticket=pc1660-1265493063.25");
 
 
@@ -54,7 +54,7 @@ if( true ){ // test 1: get
 
 
 if( true ){ // test 2: get non existing file
-	$test = new Curl("http://curl.kdyby.org/prevodnik.asm.zdrojak.nonexisting");
+	$test = new Request("http://curl.kdyby.org/prevodnik.asm.zdrojak.nonexisting");
 
 
 	echo "<hr>test 2: get 404 ... init ok<hr>", "<h2>Setup:</h2>";
@@ -93,7 +93,7 @@ if( true ){ // test 2: get non existing file
 
 
 if( true ){ // test 3: get secured file
-	$test = new Curl("http://curl.kdyby.org/secured.php");
+	$test = new Request("http://curl.kdyby.org/secured.php");
 
 
 	echo "<hr>test 3: get secured ... init ok<hr>", "<h2>Setup:</h2>";
@@ -131,7 +131,7 @@ if( true ){ // test 3: get secured file
 
 
 if( true ){ // test 4: post
-	$test = new Curl("http://curl.kdyby.org/dump_post.php");
+	$test = new Request("http://curl.kdyby.org/dump_post.php");
 
 	echo "<hr>test 4: post ... init ok<hr>", "<h2>Setup:</h2>";
 
@@ -158,7 +158,7 @@ if( true ){ // test 4: post
 
 
 if( true ){ // test 5: download
-	$test = new Curl("http://curl.kdyby.org/prevodnik.asm.zdrojak");
+	$test = new Request("http://curl.kdyby.org/prevodnik.asm.zdrojak");
 
 	echo "<hr>test 5: download ... init ok<hr>", "<h2>Setup:</h2>";
 
@@ -180,73 +180,3 @@ if( true ){ // test 5: download
 	fclose($fp);
 	echo "</pre>";
 }
-
-
-
-
-
-
-
-// FOLLOW LOCATION URL BUILD TEST:
-
-//$cycles = 1;
-//
-//foreach( array(
-//	"http://www.kdyby.org/download/prevodnik.asm.zdrojak",
-//	"www.kdyby.org/download/prevodnik.asm.zdrojak",
-//	"kdyby.org/download/prevodnik.asm.zdrojak",
-//	"/download/prevodnik.asm.zdrojak",
-//	"download/prevodnik.asm.zdrojak",
-//	"prevodnik.asm.zdrojak"
-//) AS $response_headers['Location'] ){
-//
-//	foreach( array(
-//	    "http://curl.kdyby.org/prevodnik.asm.zdrojak",
-//	    "curl.kdyby.org/prevodnik.asm.zdrojak",
-//	    "/prevodnik.asm.zdrojak",
-//	    "prevodnik.asm.zdrojak"
-//	) AS $this_url ){
-//
-//		try {
-//
-//			$this_getMethod = 'get';
-//
-//			echo "<h2>",$response_headers['Location']," vs ",$this_url,"</h2>";
-//
-//
-//			$url = new Nette\Web\Uri($response_headers['Location']);
-//
-//			$lastUrl = new Nette\Web\Uri(/*$this->url*/$this_url);
-//
-//			if( empty($url->scheme) ){
-//				if( empty($lastUrl->scheme) ){
-//					throw new \Exception("Missign URL scheme!");
-//				}
-//
-//				$url->scheme = $lastUrl->scheme;
-//			}
-//
-//			if( empty($url->host) ){
-//				if( empty($lastUrl->host) ){
-//					throw new \Exception("Missign URL host!");
-//				}
-//
-//				$url->host = $lastUrl->host;
-//			}
-//
-//			if( empty($url->path) ){
-//				$url->path = $lastUrl->path;
-//			}
-//
-//
-//			$response = dump($this_getMethod, (string)$url, array(), ++$cycles);
-//
-//		} catch( \Exception $e ){
-//			dump("Exception ! ".$e->getMessage());
-//		}
-//
-//		echo "<hr>";
-//	}
-//}
-//
-//exit("<hr>shut up");
