@@ -338,6 +338,50 @@ class Request extends Nette\Object
 
 
 	/**
+	 * The maximum number of seconds to allow cURL functions to execute.
+	 * @param int
+	 * @return Curl
+	 */
+	public function setTimeOut($seconds = 15)
+	{
+		$this->setOption('timeout', (int) $seconds);
+		return $this;
+	}
+
+
+	/**
+	 * Return option value for CURLOPT_TIMEOUT
+	 * @return int|NULL
+	 */
+	public function getTimeOut()
+	{
+		return $this->getOption('timeout');
+	}
+
+
+	/**
+	 * The number of seconds to wait while trying to connect. Use 0 to wait indefinitely.
+	 * @param int
+	 * @return Curl
+	 */
+	public function setConnectionTimeOut($seconds = 15)
+	{
+		$this->setOption('connecttimeout', (int) $seconds);
+		return $this;
+	}
+
+
+	/**
+	 * Return option value for CURLOPT_CONNECTTIMEOUT
+	 * @return int|NULL
+	 */
+	public function getConnectionTimeOut()
+	{
+		return $this->getOption('connecttimeout');
+	}
+
+
+	/**
 	 * @param string $header
 	 * @param string $value
 	 * @return \Curl\Request
