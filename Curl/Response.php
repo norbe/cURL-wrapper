@@ -11,7 +11,7 @@ use Nette\String;
  * the response body and an associative array of headers
  *
  * <code>
- * $response = new CurlResponse(curl_exec($curl_handle));
+ * $response = new Curl\Response(curl_exec($curl_handle));
  * echo $response->body;
  * echo $response->headers['Status'];
  * </code>
@@ -172,7 +172,7 @@ class Response extends Nette\Object
 	 * Returns the response body
 	 *
 	 * <code>
-	 * $curl = new Request;
+	 * $curl = new Curl\Request;
 	 * $response = $curl->get('google.com');
 	 * echo $response;  # => echo $response->body;
 	 * </code>
