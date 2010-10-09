@@ -24,9 +24,9 @@ class Response extends Nette\Object
 {
 
 	/**#@+ regexp's for parsing */
-	const HEADER_REGEXP = "#(.*?)\:\s(.*)#";
+	const HEADER_REGEXP = "#(?P<header>.*?)\:\s(?P<value>.*)#";
 	const HEADERS_REGEXP = "#HTTP/\d\.\d.*?$.*?\r\n\r\n#ims";
-	const VERSION_AND_STATUS = "#HTTP/(\d\.\d)\s(\d\d\d)\s(.*)#";
+	const VERSION_AND_STATUS = "#HTTP/(?P<version>\d\.\d)\s(?P<code>\d\d\d)\s(?P<status>.*)#";
 	const FILE_CONTENT_START = "\r\n\r\n";
 	/**#@- */
 
@@ -94,15 +94,15 @@ class Response extends Nette\Object
 		$version_and_status = array_shift($headers);
 		$matches = String::match($version_and_status, self::VERSION_AND_STATUS);
 		if (count($matches) > 0) {
-			$found['Http-Version'] = $matches[1];
-			$found['Status-Code'] = $matches[2];
-			$found['Status'] = $matches[2].' '.$matches[3];
+			$found['Http-Version'] = $matches['version'];
+			$found['Status-Code'] = $matches['code'];
+			$found['Status'] = $matches['code'].' '.$matches['status'];
 		}
 
 		# Convert headers into an associative array
 		foreach ($headers as $header) {
 			$matches = String::match($header, self::HEADER_REGEXP);
-			$found[$matches[1]] = $matches[2];
+			$found[$matches['header']] = $matches['value'];
 		}
 
 		return $found;
@@ -135,6 +135,7 @@ class Response extends Nette\Object
 				$matches = String::matchAll(implode($rows), self::HEADERS_REGEXP);
 
 			} while ($matches && count($matches[0]) == 0);
+
 
 			if (isset($matches[0][0])) {
 				$headers_string = array_pop($matches[0]);
