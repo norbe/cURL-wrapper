@@ -19,6 +19,12 @@ use Nette\String;
  * @package cURL
  * @author Sean Huber <shuber@huberry.com>
  * @author Filip Procházka <hosiplan@kdyby.org>
+ *
+ * @property-read \Curl\Request $request
+ * @property-read string $body
+ * @property-read string $response
+ * @property-read string $headers
+ * @property-read string $query
  */
 class Response extends Nette\Object
 {
