@@ -80,9 +80,9 @@ class Response extends Nette\Object
 			$headers = explode("\r\n", str_replace("\r\n\r\n", '', $headers_string));
 
 			# Remove headers from the response body
-			$this->Body = str_replace($headers_string, '', $response);
+			$this->Body = substr($response, $this->request->info['header_size']);
 
-			$this->Headers = $this->parseHeaders($headers);
+			$this->Headers = static::parseHeaders($headers);
 		}
 	}
 
@@ -92,7 +92,7 @@ class Response extends Nette\Object
 	 * @param array $headers
 	 * @return array
 	 */
-	public function parseHeaders($headers)
+	public static function parseHeaders($headers)
 	{
 		$found = array();
 
@@ -131,51 +131,34 @@ class Response extends Nette\Object
 				throw new \InvalidStateException("Fopen error for file '{$path_p}'");
 			}
 
-			$rows = array();
-			do {
-				if (feof($fp)) {
-					break;
-				}
-				$rows[] = fgets($fp);
+			$headers = String::split(@fread($fp, $this->request->info['header_size']), "~[\n\r]+~", PREG_SPLIT_NO_EMPTY);
+			$this->Headers = array_merge($this->Headers, static::parseHeaders($headers));
 
-				$matches = String::matchAll(implode($rows), self::HEADERS_REGEXP);
+			@fseek($fp, $this->request->info['header_size']);
 
-			} while ($matches && count($matches[0]) == 0);
+			$path_t = $this->request->downloadPath . '.tmp';
 
-
-			if (isset($matches[0][0])) {
-				$headers_string = array_pop($matches[0]);
-				$headers = explode("\r\n", str_replace("\r\n\r\n", '', $headers_string));
-				$this->Headers = array_merge($this->Headers, $this->parseHeaders($headers));
-
-				fseek($fp, strlen($headers_string));
-// 				$this->request->getFileProtocol();
-
-				$path_t = $this->request->downloadPath . '.tmp';
-
-				if (($ft = @fopen($this->request->fileProtocol . '://' . $path_t, "wb")) === FALSE) {
-					throw new \InvalidStateException("Write error for file '{$path_t}' ");
-				}
-
-				while (!feof($fp)) {
-					$row = fgets($fp, 4096);
-					fwrite($ft, $row);
-				}
-
-				@fclose($fp);
-				@fclose($ft);
-
-				if (!@unlink($this->request->fileProtocol . '://' . $path_p)) {
-					throw new \InvalidStateException("Error while deleting file {$path_p} ");
-				}
-
-				if (!@rename($this->request->fileProtocol . '://' . $path_t, $this->request->fileProtocol . '://' . $path_p)) {
-					throw new \InvalidStateException("Error while renaming file '{$path_t}' to '".basename($path_p)."'. ");
-				}
-
-				@chmod($path_p, 0755);
-
+			if (($ft = @fopen($this->request->fileProtocol . '://' . $path_t, "wb")) === FALSE) {
+				throw new \InvalidStateException("Write error for file '{$path_t}' ");
 			}
+
+			while (!feof($fp)) {
+				$row = fgets($fp, 4096);
+				fwrite($ft, $row);
+			}
+
+			@fclose($fp);
+			@fclose($ft);
+
+			if (!@unlink($this->request->fileProtocol . '://' . $path_p)) {
+				throw new \InvalidStateException("Error while deleting file {$path_p} ");
+			}
+
+			if (!@rename($this->request->fileProtocol . '://' . $path_t, $this->request->fileProtocol . '://' . $path_p)) {
+				throw new \InvalidStateException("Error while renaming file '{$path_t}' to '".basename($path_p)."'. ");
+			}
+
+			@chmod($path_p, 0755);
 
 			if (!$this->Headers) {
 				throw new CurlException("Headers parsing failed", NULL, $this);
@@ -228,8 +211,8 @@ class Response extends Nette\Object
 	public function getQuery()
 	{
 		$contentType = NULL;
-		if (isset($this->Headers['Content-Type'])) {
-			$contentType = $this->Headers['Content-Type'];
+		if (isset($this->request->info['content_type'])) {
+			$contentType = static::getContentType($this->request->info['content_type'], $contentType);
 		}
 
 		return \phpQuery\phpQuery::newDocument($this->body, $contentType);
@@ -244,9 +227,7 @@ class Response extends Nette\Object
 	{
 		if ($from === NULL) {
 			$charset = $this->query['head > meta[http-equiv=Content-Type]']->attr('content');
-			$match = \Nette\String::match($charset, "~^(?P<type>[^;]+); charset=(?P<charset>.+)$~");
-
-			$from = $match['charset'];
+			$from = static::getCharset($charset);
 		}
 
 		if ($body = @iconv($from, $to, $this->body)) {
@@ -257,6 +238,28 @@ class Response extends Nette\Object
 		}
 
 		return $this;
+	}
+
+
+	/**
+	 * @param string $header
+	 * @return string
+	 */
+	public static function getCharset($header, $default = NULL)
+	{
+		$match = String::match($header, "~^(?P<type>[^;]+); charset=(?P<charset>.+)$~");
+		return isset($match['charset']) ? $match['charset'] : $default;
+	}
+
+
+	/**
+	 * @param string $header
+	 * @return string
+	 */
+	public static function getContentType($header, $default = NULL)
+	{
+		$match = String::match($header, "~^(?P<type>[^;]+); charset=(?P<charset>.+)$~");
+		return isset($match['type']) ? $match['type'] : $default;
 	}
 
 
