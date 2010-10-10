@@ -1117,7 +1117,18 @@ class Request extends Nette\Object
 	{
 		$headers = array();
 		foreach ($this->headers as $key => $value) {
-			$headers[] = (!is_int($key) ? $key.': ' : '').$value;
+                    $regex = array(
+                        '~^HTTP_~i',
+                        '~([a-z]+)~ie',
+                        '~_~'
+                    );
+                    $replace = array(
+                        '',
+                        'ucfirst(strtolower("$1"))',
+                        '-'
+                    );
+                    $key = preg_replace($regex, $replace, $key); //fix HTTP_ACCEPT_CHARSET to Accept-Charset
+                    $headers[] = (!is_int($key) ? $key.': ' : '').$value;
 		}
 
 		if (count($this->headers) > 0) {
