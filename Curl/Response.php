@@ -118,24 +118,24 @@ class Response extends Nette\Object
 	 * @throws \InvalidStateException
 	 * @return \Curl\Response
 	 */
-	public function parseFile()
+	private function parseFile()
 	{
 		if ($this->request->method === Request::DOWNLOAD) {
 			$path_p = $this->request->downloadPath;
-			@fclose($this->request->getOption('file'));
+			@fclose($this->request->getOption('file')); // internationaly @
 
-			if (($fp = @fopen($this->request->fileProtocol . '://' . $path_p, "rb")) === FALSE) {
+			if (($fp = @fopen($this->request->fileProtocol . '://' . $path_p, "rb")) === FALSE) { // internationaly @
 				throw new \InvalidStateException("Fopen error for file '{$path_p}'");
 			}
 
-			$headers = String::split(@fread($fp, $this->request->info['header_size']), "~[\n\r]+~", PREG_SPLIT_NO_EMPTY);
+			$headers = String::split(@fread($fp, $this->request->info['header_size']), "~[\n\r]+~", PREG_SPLIT_NO_EMPTY); // internationaly @
 			$this->Headers = array_merge($this->Headers, static::parseHeaders($headers));
 
-			@fseek($fp, $this->request->info['header_size']);
+			@fseek($fp, $this->request->info['header_size']); // internationaly @
 
 			$path_t = $this->request->downloadPath . '.tmp';
 
-			if (($ft = @fopen($this->request->fileProtocol . '://' . $path_t, "wb")) === FALSE) {
+			if (($ft = @fopen($this->request->fileProtocol . '://' . $path_t, "wb")) === FALSE) { // internationaly @
 				throw new \InvalidStateException("Write error for file '{$path_t}' ");
 			}
 
@@ -144,18 +144,18 @@ class Response extends Nette\Object
 				fwrite($ft, $row);
 			}
 
-			@fclose($fp);
-			@fclose($ft);
+			@fclose($fp); // internationaly @
+			@fclose($ft); // internationaly @
 
-			if (!@unlink($this->request->fileProtocol . '://' . $path_p)) {
+			if (!@unlink($this->request->fileProtocol . '://' . $path_p)) { // internationaly @
 				throw new \InvalidStateException("Error while deleting file {$path_p} ");
 			}
 
-			if (!@rename($this->request->fileProtocol . '://' . $path_t, $this->request->fileProtocol . '://' . $path_p)) {
+			if (!@rename($path_t, $path_p)) { // internationaly @
 				throw new \InvalidStateException("Error while renaming file '{$path_t}' to '".basename($path_p)."'. ");
 			}
 
-			@chmod($path_p, 0755);
+			chmod($path_p, 0755);
 
 			if (!$this->Headers) {
 				throw new CurlException("Headers parsing failed", NULL, $this);
@@ -164,6 +164,7 @@ class Response extends Nette\Object
 
 		return $this;
 	}
+
 
 	/**
 	 * Returns the response body
@@ -178,7 +179,7 @@ class Response extends Nette\Object
 	 */
 	public function __toString()
 	{
-		return $this->Body;
+		return $this->body;
 	}
 
 
@@ -188,6 +189,10 @@ class Response extends Nette\Object
 	 */
 	public function getBody()
 	{
+		if ($this->Body === NULL && $this->Request->downloadPath) {
+			return file_get_contents($this->Request->downloadPath);
+		}
+
 		return $this->Body;
 	}
 
@@ -198,7 +203,7 @@ class Response extends Nette\Object
 	 */
 	public function getResponse()
 	{
-		return $this->Body;
+		return $this->body;
 	}
 
 
