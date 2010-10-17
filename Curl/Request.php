@@ -3,6 +3,7 @@
 namespace Curl;
 
 use Nette;
+use Nette\String;
 use Nette\Tools;
 use Nette\Web\Uri;
 
@@ -189,11 +190,11 @@ class Request extends Nette\Object
 	   );
 
 
-
 	/**
 	 * Initializes a Curl object
 	 * Also sets the $userAgent to $_SERVER['HTTP_USER_AGENT'] if it exists, 'Curl/PHP '.PHP_VERSION.' (http://curl.kdyby.org/)' otherwise
 	 * @param string $url
+	 * @param array|\Nette\Config\Config $config
 	 * @throws \Curl\CurlException
 	 */
 	public function __construct($url = NULL, $config = array())
@@ -215,30 +216,40 @@ class Request extends Nette\Object
 
 	/**
 	 * Configures Request
-	 * @param array $config
+	 * @param array|\Nette\Config\Config $config
 	 */
-	public function configure(array $config)
+	public function configure($config)
 	{
+		if ($config instanceof Nette\Config\Config) {
+			$config = $config->toArray();
+		}
+
+		if (!is_array($config)) {
+			throw new \InvalidArgumentException("Argument \$config must be array, ".gettype($config)." given");
+		}
+
 		foreach ($config as $option => $value) {
-			if ($option == 'cookieFile') {
+			$option[0] = $option[0] & "\xDF";
+
+			if ($option == 'CookieFile') {
 				$this->setCookieFile($value);
 
-			} elseif ($option == 'downloadFolder') {
+			} elseif ($option == 'DownloadFolder') {
 				$this->setDownloadFolder($value);
 
-			} elseif ($option == 'referer') {
+			} elseif ($option == 'Referer') {
 				$this->setReferer($value);
 
-			} elseif ($option == 'userAgent') {
+			} elseif ($option == 'UserAgent') {
 				$this->setUserAgent($value);
 
-			} elseif ($option == 'followRedirects') {
+			} elseif ($option == 'FollowRedirects') {
 				$this->setFollowRedirects($value);
 
-			} elseif ($option == 'returnTransfer') {
+			} elseif ($option == 'ReturnTransfer') {
 				$this->setReturnTransfer($value);
 
-			} elseif (is_array($this->{$option})) {
+			} elseif (is_array($value)) {
 				foreach ((array)$value as $key => $set) {
 					$this->{$option}[$key] = $set;
 				}
@@ -248,7 +259,6 @@ class Request extends Nette\Object
 			}
 		}
 	}
-
 
 
 	/**
@@ -617,12 +627,13 @@ class Request extends Nette\Object
 	 */
 	public function setCookieFile($cookieFile)
 	{
-		if (is_string($cookieFile) AND $cookieFile === "") {
+		if (!is_string($cookieFile) || $cookieFile === "") {
 			throw new \InvalidArgumentException("Invalid argument \$cookieFile");
 		}
 
 		if (is_writable($cookieFile)) {
-			$this->CookieFile = $cookieFile;
+			$this->setOption('cookiefile', $cookieFile);
+			$this->setOption('cookiejar', $cookieFile);
 
 		} elseif (is_writable(dirname($cookieFile))) {
 			if (($fp = @fopen($this->FileProtocol . '://' . $cookieFile, "wb")) === FALSE) {
@@ -949,17 +960,17 @@ class Request extends Nette\Object
 	}
 
 
-	/* *
-	 * Uploads file
-	 * Returns a bool value whether an upload was succesful
-	 * @param string $file
-	 * @param string $url
-	 * @param string $username
-	 * @param string $password
-	 * @param int $timeout
-	 * @throws \Curl\CurlException
-	 * @return bool
-	 */
+//	/* *
+//	 * Uploads file
+//	 * Returns a bool value whether an upload was succesful
+//	 * @param string $file
+//	 * @param string $url
+//	 * @param string $username
+//	 * @param string $password
+//	 * @param int $timeout
+//	 * @throws \Curl\CurlException
+//	 * @return bool
+//	 */
 // 	public function ftpUpload($file, $url, $username = NULL, $password = NULL, $timeout = 300)
 // 	{
 // 		$file_name = basename($file);
@@ -990,6 +1001,14 @@ class Request extends Nette\Object
 // 	}
 
 
+	protected function openRequest()
+	{
+		$this->closeRequest();
+
+		return $this->RequestResource = curl_init();
+	}
+
+
 	/**
 	 * Makes an HTTP request of the specified $method to a $url with an optional array or string of $vars
 	 * Returns a Curl\Response object if the request was successful, false otherwise
@@ -1017,9 +1036,7 @@ class Request extends Nette\Object
 		}
 
 		do{
-			$this->closeRequest();
-
-			$this->RequestResource = curl_init();
+			$requestResource = $this->openRequest();
 
 			if (count($this->proxies) > $used_proxies) {
 				//$this->setOption['HTTPPROXYTUNNEL'] = TRUE;
@@ -1038,15 +1055,13 @@ class Request extends Nette\Object
 				unset($this->Options['PROXY'], $this->Options['PROXYPORT'], $this->Options['PROXYTYPE'], $this->Options['PROXYUSERPWD']);
 			}
 
-			$this->setRequestMethod($method);
-			$this->setRequestOptions($url, $post);
-			$this->setRequestHeaders();
+			$this->setRequestOptions($requestResource, $method, $url, $post);
+			$this->setRequestHeaders($requestResource);
 
-			$response = curl_exec($this->RequestResource);
-			$this->Error = curl_errno($this->RequestResource).' - '.curl_error($this->RequestResource);
-			$this->Info = curl_getinfo($this->RequestResource);
-
-		} while (curl_errno($this->RequestResource) == 6 AND count($this->proxies) < $used_proxies) ;
+			$response = curl_exec($requestResource);
+			$this->Error = curl_errno($requestResource).' - '.curl_error($requestResource);
+			$this->Info = curl_getinfo($requestResource);
+		} while (curl_errno($requestResource) == 6 AND count($this->proxies) < $used_proxies) ;
 
 		$this->closeRequest();
 
@@ -1099,7 +1114,7 @@ class Request extends Nette\Object
 	/**
 	 * Closes the current request
 	 */
-	private function closeRequest()
+	protected function closeRequest()
 	{
 		if (gettype($this->RequestResource) == 'resource' AND get_resource_type($this->RequestResource) == 'curl') {
 			@curl_close($this->RequestResource);
@@ -1113,27 +1128,33 @@ class Request extends Nette\Object
 	/**
 	 * Formats and adds custom headers to the current request
 	 */
-	private function setRequestHeaders()
+	private function setRequestHeaders($request)
 	{
 		$headers = array();
 		foreach ($this->headers as $key => $value) {
-                    $regex = array(
-                        '~^HTTP_~i',
-                        '~([a-z]+)~ie',
-                        '~_~'
-                    );
-                    $replace = array(
-                        '',
-                        'ucfirst(strtolower("$1"))',
-                        '-'
-                    );
-                    $key = preg_replace($regex, $replace, $key); //fix HTTP_ACCEPT_CHARSET to Accept-Charset
-                    $headers[] = (!is_int($key) ? $key.': ' : '').$value;
+			//fix HTTP_ACCEPT_CHARSET to Accept-Charset
+			$key = String::replace($key, array(
+					'~^HTTP_~i' => '',
+					'~_~' => '-'
+				));
+			$key = String::replace($key, array(
+					'~(?P<word>[a-z]+)~i',
+				), function($match) {
+					return ucfirst(strtolower(current($match)));
+				});
+
+			if ($key == 'Et') {
+				$key = 'ET';
+			}
+
+			$headers[] = (!is_int($key) ? $key.': ' : '').$value;
 		}
 
 		if (count($this->headers) > 0) {
-			curl_setopt($this->RequestResource, CURLOPT_HTTPHEADER, $headers);
+			curl_setopt($request, CURLOPT_HTTPHEADER, $headers);
 		}
+
+		return $headers;
 	}
 
 
@@ -1160,7 +1181,6 @@ class Request extends Nette\Object
 				break;
 
 //			case self::UPLOAD_FTP:
-//				curl_setopt($this->RequestResource, CURLOPT_UPLOAD, TRUE);
 //				$this->setOption('upload', TRUE);
 //				break;
 
@@ -1175,8 +1195,10 @@ class Request extends Nette\Object
 	 * Sets the CURLOPT options for the current request
 	 * @param string $url
 	 */
-	private function setRequestOptions($url, $post = array())
+	private function setRequestOptions($requestResource, $method, $url, $post = array())
 	{
+		$this->setRequestMethod($method);
+
 		$this->setOption('url', $url);
 
 		if ($post && is_array($post)) {
@@ -1199,9 +1221,8 @@ class Request extends Nette\Object
 
 		// Set all cURL options
 		foreach ($this->Options as $option => $value) {
-			curl_setopt($this->RequestResource, constant('CURLOPT_'.$option), $value);
+			curl_setopt($requestResource, constant('CURLOPT_'.$option), $value);
 		}
 	}
-
 
 }
