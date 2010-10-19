@@ -51,6 +51,11 @@ class Request extends Nette\Object
 	/**#@- */
 
 	/**
+	 * @var bool|closure function($responce_headers)
+	 */
+	public $confirmRedirect = true;
+
+	/**
 	 * Used http method
 	 * @var string
 	 */
@@ -1061,7 +1066,7 @@ class Request extends Nette\Object
 
 			$response_headers = $response->getHeaders();
 
-			if (isset($response_headers['Location']) AND $this->getFollowRedirects())  {
+			if (isset($response_headers['Location']) AND $this->getFollowRedirects() AND $this->getConfirmRedirect($response_headers))  {
 				$url = new Uri($response_headers['Location']);
 				$lastUrl = new Uri($this->info['url']);
 
@@ -1200,6 +1205,24 @@ class Request extends Nette\Object
 		// Set all cURL options
 		foreach ($this->Options as $option => $value) {
 			curl_setopt($this->RequestResource, constant('CURLOPT_'.$option), $value);
+		}
+	}
+
+	/**
+	 * Try confirm redirect before send real request.
+	 * @param array
+	 * @return boll
+	 * @throws \Curl\CurlException
+	 */
+	private function getConfirmRedirect($response_headers){
+		if(is_bool($this->confirmRedirect)){
+			return $this->confirmRedirect;
+		}
+		elseif(is_callable($this->confirmRedirect)){
+			return (bool) $this->confirmRedirect($response_headers);
+		}
+		else{
+			throw new CurlException("Request::\$confirmRedirect must be bool or closure.");
 		}
 	}
 
