@@ -671,14 +671,14 @@ class Request extends Nette\Object
 	 */
 	public function setDownloadFolder($downloadFolder)
 	{
-		if (is_string($downloadFolder) AND $downloadFolder === "") {
+		if (is_string($downloadFolder) && $downloadFolder === "") {
 			throw new \InvalidArgumentException("Invalid argument \$downloadFolder");
 		}
 
 		@mkdir($downloadFolder); // may already exists
 		@chmod($downloadFolder, "0754");
 
-		if (is_dir($downloadFolder) AND is_writable($downloadFolder)) {
+		if (is_dir($downloadFolder) && is_writable($downloadFolder)) {
 			$this->DownloadFolder = $downloadFolder;
 
 		} else {
@@ -732,7 +732,7 @@ class Request extends Nette\Object
 
 		}
 
-		if (file_exists($certificate) AND in_array($verifyhost, range(0,2))) {
+		if (file_exists($certificate) && in_array($verifyhost, range(0,2))) {
 			unset($this->Options['CAPATH']);
 
 			$this->setOption('ssl_verifypeer', TRUE);
@@ -976,7 +976,7 @@ class Request extends Nette\Object
 // 		$file_name = basename($file);
 // 		$login = NULL;
 //
-// 		if (is_string($username) AND $username !== '' AND is_string($password) AND $password !== '') {
+// 		if (is_string($username) && $username !== '' && is_string($password) && $password !== '') {
 // 			$login = $username . ':' . $password . '@';
 // 		}
 //
@@ -1001,11 +1001,15 @@ class Request extends Nette\Object
 // 	}
 
 
-	protected function openRequest()
+	/**
+	 * @param string $url
+	 * @return resource
+	 */
+	protected function openRequest($url)
 	{
 		$this->closeRequest();
 
-		return $this->RequestResource = curl_init();
+		return $this->RequestResource = curl_init($url);
 	}
 
 
@@ -1019,7 +1023,6 @@ class Request extends Nette\Object
 	 * @throws \Curl\CurlException
 	 * @throws \BadStatusException
 	 * @throws \FailedRequestException
-	 * @throws \InvalidStateException
 	 * @return \Curl\Response
 	 */
 	public function sendRequest($method, $url, $post = array(), $cycles = 1)
@@ -1031,75 +1034,34 @@ class Request extends Nette\Object
 		$this->Error = NULL;
 		$used_proxies = 0;
 
-		if (!is_string($url) AND $url !== '') {
+		if (!is_string($url) && $url !== '') {
 			throw new CurlException("Invalid URL: " . $url);
 		}
 
-		do{
-			$requestResource = $this->openRequest();
+		do {
+			$requestResource = $this->openRequest($url);
 
-			if (count($this->proxies) > $used_proxies) {
-				//$this->setOption['HTTPPROXYTUNNEL'] = TRUE;
-				$this->setOption('proxy', $this->proxies[$used_proxies]['ip'] . ':' . $this->proxies[$used_proxies]['port']);
-				$this->setOption('proxyport', $this->proxies[$used_proxies]['port']);
-				//$this->setOption('PROXYTYPE', CURLPROXY_HTTP);
-				$this->setOption('timeout', $this->proxies[$used_proxies]['timeout']);
-
-				if ($this->proxies[$used_proxies]['user'] !== NULL AND $this->proxies[$used_proxies]['pass'] !== NULL) {
-					$this->setOption('proxyuserpwd', $this->proxies[$used_proxies]['user'] . ':' . $this->proxies[$used_proxies]['pass']);
-				}
-
-				$used_proxies++;
-
-			} else {
-				unset($this->Options['PROXY'], $this->Options['PROXYPORT'], $this->Options['PROXYTYPE'], $this->Options['PROXYUSERPWD']);
-			}
-
+			$this->tryProxy($used_proxies++);
 			$this->setRequestOptions($requestResource, $method, $url, $post);
 			$this->setRequestHeaders($requestResource);
 
-			$response = curl_exec($requestResource);
-			$this->Error = curl_errno($requestResource).' - '.curl_error($requestResource);
-			$this->Info = curl_getinfo($requestResource);
-		} while (curl_errno($requestResource) == 6 AND count($this->proxies) < $used_proxies) ;
+			$response = $this->executeRequest($requestResource);
+		} while (curl_errno($requestResource) == 6 && count($this->proxies) < $used_proxies);
 
 		$this->closeRequest();
 
 		if ($response) {
-			$response = new Response($response, $this);
+			$response = $this->createResponse($response);
 
 		} else {
 			throw new FailedRequestException($this->error, $this->info['http_code']);
 		}
 
 		if (!in_array($response->getHeader('Status-Code'), self::$badStatusCodes)) {
-
 			$response_headers = $response->getHeaders();
 
-			if (isset($response_headers['Location']) AND $this->getFollowRedirects())  {
-				$url = new Uri($response_headers['Location']);
-				$lastUrl = new Uri($this->info['url']);
-
-				if (empty($url->scheme)) { // scheme
-					if (empty($lastUrl->scheme)) {
-						throw new \InvalidStateException("Missign URL scheme!");
-					}
-
-					$url->scheme = $lastUrl->scheme;
-				}
-
-				if (empty($url->host)) { // host
-					if (empty($lastUrl->host)) {
-						throw new \InvalidStateException("Missign URL host!");
-					}
-
-					$url->host = $lastUrl->host;
-				}
-
-				if (empty($url->path)) { // path
-					$url->path = $lastUrl->path;
-				}
-
+			if (isset($response_headers['Location']) && $this->getFollowRedirects())  {
+				$url = static::fixUrl($this->info['url'], $response_headers['Location']);
 				$response = $this->sendRequest($this->getMethod(), (string)$url, $post, ++$cycles);
 			}
 
@@ -1112,11 +1074,35 @@ class Request extends Nette\Object
 
 
 	/**
+	 * @param resource $requestResource
+	 * @return string
+	 */
+	protected function executeRequest($requestResource)
+	{
+		$response = curl_exec($requestResource);
+		$this->Error = curl_errno($requestResource).' - '.curl_error($requestResource);
+		$this->Info = curl_getinfo($requestResource);
+
+		return $response;
+	}
+
+
+	/**
+	 * @param string $response
+	 * @return \Curl\Response
+	 */
+	protected function createResponse($response)
+	{
+		return $response = new Response($response, $this);
+	}
+
+
+	/**
 	 * Closes the current request
 	 */
 	protected function closeRequest()
 	{
-		if (gettype($this->RequestResource) == 'resource' AND get_resource_type($this->RequestResource) == 'curl') {
+		if (gettype($this->RequestResource) == 'resource' && get_resource_type($this->RequestResource) == 'curl') {
 			@curl_close($this->RequestResource);
 
 		} else {
@@ -1126,9 +1112,73 @@ class Request extends Nette\Object
 
 
 	/**
+	 * @param string $from
+	 * @param string $to
+	 * @throws \InvalidStateException
+	 * @return Uri
+	 */
+	public static function fixUrl($from, $to)
+	{
+		$url = new Uri($to);
+		$lastUrl = new Uri($from);
+
+		if (empty($url->scheme)) { // scheme
+			if (empty($lastUrl->scheme)) {
+				throw new \InvalidStateException("Missign URL scheme!");
+			}
+
+			$url->scheme = $lastUrl->scheme;
+		}
+
+		if (empty($url->host)) { // host
+			if (empty($lastUrl->host)) {
+				throw new \InvalidStateException("Missign URL host!");
+			}
+
+			$url->host = $lastUrl->host;
+		}
+
+		if (empty($url->path)) { // path
+			$url->path = $lastUrl->path;
+		}
+
+		return $url;
+	}
+
+
+	/**
+	 * Starts with 0
+	 * @param int $used_proxies
+	 * @throws \InvalidStateException
+	 */
+	protected function tryProxy($used)
+	{
+		if (!isset($this->proxies[$used])) {
+			throw new \InvalidStateException("Undefined offset " . $used . " Request have only " . (count($this->proxies)-1) . " proxies, starting with 0");
+		}
+
+		if (count($this->proxies) > $used) {
+			//$this->setOption['HTTPPROXYTUNNEL'] = TRUE;
+			$this->setOption('proxy', $this->proxies[$used]['ip'] . ':' . $this->proxies[$used]['port']);
+			$this->setOption('proxyport', $this->proxies[$used]['port']);
+			//$this->setOption('PROXYTYPE', CURLPROXY_HTTP);
+			$this->setOption('timeout', $this->proxies[$used]['timeout']);
+
+			if ($this->proxies[$used]['user'] !== NULL && $this->proxies[$used]['pass'] !== NULL) {
+				$this->setOption('proxyuserpwd', $this->proxies[$used]['user'] . ':' . $this->proxies[$used]['pass']);
+			}
+
+		} else {
+			unset($this->Options['PROXY'], $this->Options['PROXYPORT'], $this->Options['PROXYTYPE'], $this->Options['PROXYUSERPWD']);
+		}
+	}
+
+
+
+	/**
 	 * Formats and adds custom headers to the current request
 	 */
-	private function setRequestHeaders($request)
+	protected function setRequestHeaders($request)
 	{
 		$headers = array();
 		foreach ($this->headers as $key => $value) {
@@ -1162,7 +1212,7 @@ class Request extends Nette\Object
 	 * Set the associated Curl options for a request method
 	 * @param string $method
 	 */
-	private function setRequestMethod($method)
+	protected function setRequestMethod($method)
 	{
 		$this->Method = strtoupper($method);
 
@@ -1195,7 +1245,7 @@ class Request extends Nette\Object
 	 * Sets the CURLOPT options for the current request
 	 * @param string $url
 	 */
-	private function setRequestOptions($requestResource, $method, $url, $post = array())
+	protected function setRequestOptions($requestResource, $method, $url, $post = array())
 	{
 		$this->setRequestMethod($method);
 
