@@ -30,8 +30,9 @@ class Response extends Nette\Object
 {
 
 	/**#@+ regexp's for parsing */
-	const HEADER_REGEXP = "#(?P<header>.*?)\:\s(?P<value>.*)#";
-	const VERSION_AND_STATUS = "#HTTP/(?P<version>\d\.\d)\s(?P<code>\d\d\d)\s(?P<status>.*)#";
+	const HEADER_REGEXP = '~(?P<header>.*?)\:\s(?P<value>.*)~';
+	const VERSION_AND_STATUS = '~HTTP/(?P<version>\d\.\d)\s(?P<code>\d\d\d)\s(?P<status>.*)~';
+	const CONTENT_TYPE = '~^(?P<type>[^;]+);[\t ]*charset=(?P<charset>.+)$~i';
 	/**#@- */
 
 	/**
@@ -223,23 +224,47 @@ class Response extends Nette\Object
 
 	/**
 	 * @param string $charset
-	 * @return \Curl\Response
+	 * @return \Curl\CurlResponse
 	 */
 	public function convert($to = "UTF-8", $from = NULL)
 	{
 		if ($from === NULL) {
 			$charset = $this->query['head > meta[http-equiv=Content-Type]']->attr('content');
+			$charset = $charset ?: $this->query['head > meta[http-equiv=content-type]']->attr('content');
+			$charset = $charset ?: $this->headers['Content-Type'];
+
 			$from = static::getCharset($charset);
 		}
 
-		if ($body = @iconv($from, $to, $this->body)) {
-			$this->Body = $body;
+		$from = String::upper($from);
+		$to = String::upper($to);
 
-		} else {
-			throw new CurlException("Charset conversion from $from to $to failed");
+		if ($from != $to && $from && $to) {
+			if ($body = @iconv($from, $to, $this->body)) {
+				$this->Body = ltrim($body);
+
+			} else {
+				throw new CurlException("Charset conversion from $from to $to failed");
+			}
 		}
 
+		$this->Body = self::fixContentTypeMeta($this->body);
+
 		return $this;
+	}
+
+
+	/**
+	 *
+	 * @param string $document
+	 * @param string $charset
+	 * @return string
+	 */
+	public static function fixContentTypeMeta($document, $charset = 'utf-8')
+	{
+		return String::replace($document, // hack for DOMDocument
+			'~<meta([^>]+http-equiv\\s*=\\s*)["\']*Content-Type["\']*([^>]+content\\s*=\\s*["\'][^;]+;)[\t ]*charset=[^"\']+(["\'][^>]*)>~i',
+			'<meta\\1"Content-Type"\\2 charset=' . $charset . '\\3>');
 	}
 
 
@@ -249,7 +274,7 @@ class Response extends Nette\Object
 	 */
 	public static function getCharset($header, $default = NULL)
 	{
-		$match = String::match($header, "~^(?P<type>[^;]+); charset=(?P<charset>.+)$~");
+		$match = String::match($header, self::CONTENT_TYPE);
 		return isset($match['charset']) ? $match['charset'] : $default;
 	}
 
@@ -260,7 +285,7 @@ class Response extends Nette\Object
 	 */
 	public static function getContentType($header, $default = NULL)
 	{
-		$match = String::match($header, "~^(?P<type>[^;]+); charset=(?P<charset>.+)$~");
+		$match = String::match($header, self::CONTENT_TYPE);
 		return isset($match['type']) ? $match['type'] : $default;
 	}
 
@@ -368,4 +393,3 @@ class Response extends Nette\Object
 
 
 }
-
