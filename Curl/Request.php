@@ -21,6 +21,7 @@ require_once __DIR__ . "/exceptions.php";
  * @author Sean Huber <shuber@huberry.com>
  * @author Filip Procházka <hosiplan@kdyby.org>
  *
+ * @property-write callback $confirmRedirect
  * @property string $cookieFile
  * @property string $downloadFolder
  * @property string $downloadPath
@@ -864,7 +865,7 @@ class Request extends Nette\Object
 			$url .= (is_string($vars)) ? $vars : http_build_query($vars, '', '&');
 		}
 
-	return $this->sendRequest(self::GET, $url);
+		return $this->sendRequest(self::GET, $url);
 	}
 
 
@@ -1126,7 +1127,7 @@ class Request extends Nette\Object
 	 * @param string $from
 	 * @param string $to
 	 * @throws \InvalidStateException
-	 * @return Uri
+	 * @return \Nette\Web\Uri
 	 */
 	public static function fixUrl($from, $to)
 	{
@@ -1307,7 +1308,6 @@ class Request extends Nette\Object
 	/**
 	 * Asks for confirmation whether to manualy follow redirect
 	 * @param \Curl\Response $response
-	 * @throws \Curl\CurlException
 	 * @return bool
 	 */
 	protected function tryConfirmRedirect(Response $response)
