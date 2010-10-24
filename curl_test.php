@@ -10,18 +10,22 @@
 require_once dirname(__FILE__) . '/Nette/loader.php';
 require_once dirname(__FILE__) . '/Curl/Request.php';
 
-use Curl\Request,
-	Curl\CurlException;
+use Curl\Request;
+use Curl\CurlException;
+use Nette\Environment;
+use Nette\Debug;
 
 // register wrapper safe for file manipulation
-// SafeStream::register();
+Nette\SafeStream::register();
 
 
-Nette\Debug::enable();
-Nette\Debug::$strictMode = True;
+Debug::enable();
+Debug::$strictMode = True;
 
-Nette\Environment::loadConfig('config.ini');
-$config = (array)Nette\Environment::getConfig('curl');
+Environment::loadConfig(realpath('./config.ini'));
+$config = Environment::getConfig('curl');
+$config['downloadFolder'] = realpath("download");
+$config['cookieFile'] = $config['downloadFolder'].'/cookies.tmp';
 
 
 function proxy(&$test)
@@ -30,7 +34,7 @@ function proxy(&$test)
 }
 
 
-if( true ){ // test 1: get
+if (TRUE) { // test 1: get
 	$test = new Request("http://curl.kdyby.org/prevodnik.asm.zdrojak", $config);
 // 	$test = new Curl("http://iskladka.cz/iCopy/downloadBalancer.php?file=1222561395_obava_bojov+cz.avi&ticket=pc1660-1265493063.25");
 
@@ -44,7 +48,7 @@ if( true ){ // test 1: get
 	$response =  $test->get();
 
 
-	echo "<h2>Headers:</h2>";
+	echo "<h2>Response headers:</h2>";
 	dump($response->getHeaders());
 
 	echo "<h2>Response:</h2>", "<pre>";
@@ -54,7 +58,7 @@ if( true ){ // test 1: get
 
 
 
-if( true ){ // test 2: get non existing file
+if (TRUE) { // test 2: get non existing file
 	$test = new Request("http://curl.kdyby.org/prevodnik.asm.zdrojak.nonexisting", $config);
 
 
@@ -67,7 +71,7 @@ if( true ){ // test 2: get non existing file
 	try {
 	    $response =  $test->get();
 
-	    echo "<h2>Headers:</h2>";
+	    echo "<h2>Response headers:</h2>";
 	    dump($response->getHeaders());
 
 	    echo "<h2>Response:</h2>", "<pre>";
@@ -93,7 +97,7 @@ if( true ){ // test 2: get non existing file
 
 
 
-if( true ){ // test 3: get secured file
+if (TRUE) { // test 3: get secured file
 	$test = new Request("http://curl.kdyby.org/secured.php", $config);
 
 
@@ -106,7 +110,7 @@ if( true ){ // test 3: get secured file
 	try {
 	    $response =  $test->get();
 
-	    echo "<h2>Headers:</h2>";
+	    echo "<h2>Response headers:</h2>";
 	    dump($response->getHeaders());
 
 	    echo "<h2>Response:</h2>", "<pre>";
@@ -117,7 +121,7 @@ if( true ){ // test 3: get secured file
 		echo "<h1>",get_class($e),"</h1>";
 
 		if( $response = $e->getResponse() ){
-			echo "<h2>Headers:</h2>";
+			echo "<h2>Response headers:</h2>";
 			dump($response->getHeaders());
 
 			echo "<h2>Response:</h2>", "<pre>";
@@ -131,7 +135,8 @@ if( true ){ // test 3: get secured file
 }
 
 
-if( true ){ // test 4: post
+
+if (TRUE) { // test 4: post
 	$test = new Request("http://curl.kdyby.org/dump_post.php", $config);
 
 	echo "<hr>test 4: post ... init ok<hr>", "<h2>Setup:</h2>";
@@ -148,7 +153,7 @@ if( true ){ // test 4: post
 	));
 
 
-	echo "<h2>Headers:</h2>";
+	echo "<h2>Response headers:</h2>";
 	dump($response->getHeaders());
 
 	echo "<h2>Response:</h2>", "<pre>";
@@ -158,7 +163,7 @@ if( true ){ // test 4: post
 
 
 
-if( true ){ // test 5: download
+if (TRUE) { // test 5: download
 	$test = new Request("http://curl.kdyby.org/prevodnik.asm.zdrojak", $config);
 
 	echo "<hr>test 5: download ... init ok<hr>", "<h2>Setup:</h2>";
@@ -172,7 +177,7 @@ if( true ){ // test 5: download
 	$response =  $test->download();
 
 
-	echo "<h2>Headers:</h2>";
+	echo "<h2>Response headers:</h2>";
 	dump($response->getHeaders());
 
 	echo "<h2>Response:</h2>", "<pre>";
