@@ -52,6 +52,11 @@ class Request extends Nette\Object
 	/**#@- */
 
 	/**
+	 * @var callback
+	 */
+	private $ConfirmRedirect;
+
+	/**
 	 * Used http method
 	 * @var string
 	 */
@@ -248,6 +253,9 @@ class Request extends Nette\Object
 
 			} elseif ($option == 'ReturnTransfer') {
 				$this->setReturnTransfer($value);
+
+			} elseif ($option == 'ConfirmRedirect') {
+				$this->setConfirmRedirect($value);
 
 			} elseif (is_array($value)) {
 				foreach ((array)$value as $key => $set) {
@@ -1062,7 +1070,10 @@ class Request extends Nette\Object
 
 			if (isset($response_headers['Location']) && $this->getFollowRedirects())  {
 				$url = static::fixUrl($this->info['url'], $response_headers['Location']);
-				$response = $this->sendRequest($this->getMethod(), (string)$url, $post, ++$cycles);
+
+				if ($this->tryConfirmRedirect($response)) {
+					$response = $this->sendRequest($this->getMethod(), (string)$url, $post, ++$cycles);
+				}
 			}
 
 		} else {
@@ -1273,6 +1284,40 @@ class Request extends Nette\Object
 		foreach ($this->Options as $option => $value) {
 			curl_setopt($requestResource, constant('CURLOPT_'.$option), $value);
 		}
+	}
+
+
+	/**
+	 * @param array|\Nette\Callback $callback
+	 * @throws \InvalidArgumentException
+	 * @return Request
+	 */
+	public function setConfirmRedirect($callback)
+	{
+		if (!is_callable($callback)) {
+			throw new \InvalidArgumentException((is_array($callback) ? implode('::', $callback) : (string) $callback)." is not callable");
+		}
+
+		$this->ConfirmRedirect = $callback;
+
+		return $this;
+	}
+
+
+	/**
+	 * Asks for confirmation whether to manualy follow redirect
+	 * @param \Curl\Response $response
+	 * @throws \Curl\CurlException
+	 * @return bool
+	 */
+	protected function tryConfirmRedirect(Response $response)
+	{
+		if(is_callable($this->ConfirmRedirect)) {
+			return (bool) $this->ConfirmRedirect($response);
+
+		}
+
+		return TRUE;
 	}
 
 }
