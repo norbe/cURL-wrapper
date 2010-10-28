@@ -1161,14 +1161,9 @@ class Request extends Nette\Object
 	/**
 	 * Starts with 0
 	 * @param int $used_proxies
-	 * @throws \InvalidStateException
 	 */
 	protected function tryProxy($used)
 	{
-		if (!isset($this->proxies[$used])) {
-			throw new \InvalidStateException("Undefined offset " . $used . " Request have only " . (count($this->proxies)-1) . " proxies, starting with 0");
-		}
-
 		if (count($this->proxies) > $used) {
 			//$this->setOption['HTTPPROXYTUNNEL'] = TRUE;
 			$this->setOption('proxy', $this->proxies[$used]['ip'] . ':' . $this->proxies[$used]['port']);
