@@ -369,7 +369,7 @@ class Request extends Nette\Object
 	/**
 	 * The maximum number of seconds to allow cURL functions to execute.
 	 * @param int
-	 * @return Curl
+	 * @return \Curl\Request
 	 */
 	public function setTimeOut($seconds = 15)
 	{
@@ -391,7 +391,7 @@ class Request extends Nette\Object
 	/**
 	 * The number of seconds to wait while trying to connect. Use 0 to wait indefinitely.
 	 * @param int
-	 * @return Curl
+	 * @return \Curl\Request
 	 */
 	public function setConnectionTimeOut($seconds = 15)
 	{
