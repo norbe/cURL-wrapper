@@ -409,6 +409,20 @@ class Request extends Nette\Object
 		return $this->getOption('connecttimeout');
 	}
 
+	/**
+	 * Set option value for CURLOPT_MAXREDIRS, if safe_mode or open_basedir is on set only $MaxCycles
+	 * @param int $maxCycles
+	 * @return \Curl\Request 
+	 */
+	public function setMaxCycles($maxCycles)
+	{
+		if (!Tools::iniFlag('safe_mode') && ini_get('open_basedir') == "") {
+			$this->setOption('MAXREDIRS', $maxCycles);
+		}else
+			$this->MaxCycles = $maxCycles;
+
+		return $this;
+	}
 
 	/**
 	 * @param string $header
