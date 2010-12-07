@@ -423,6 +423,14 @@ class Request extends Nette\Object
 
 		return $this;
 	}
+	
+	/**
+	 * Get option value for $MaxCycles
+	 * @return int
+	 */
+	public function getMaxCycles(){
+		return $this->MaxCycles;
+	}
 
 	/**
 	 * @param string $header
