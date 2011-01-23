@@ -1333,7 +1333,7 @@ class Request extends Nette\Object
 	protected function tryConfirmRedirect(Response $response)
 	{
 		if(is_callable($this->ConfirmRedirect)) {
-			return (bool) $this->ConfirmRedirect($response);
+			return (bool) call_user_func($this->ConfirmRedirect, $response);
 
 		}
 
