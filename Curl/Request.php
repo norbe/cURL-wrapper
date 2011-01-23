@@ -1300,6 +1300,9 @@ class Request extends Nette\Object
 
 		// Set all cURL options
 		foreach ($this->Options as $option => $value) {
+			if($option == "FOLLOWLOCATION" && ( Tools::iniFlag('safe_mode') || ini_get('open_basedir') != "" )){
+				continue;
+			}
 			curl_setopt($requestResource, constant('CURLOPT_'.$option), $value);
 		}
 	}
