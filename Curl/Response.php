@@ -3,7 +3,7 @@
 namespace Curl;
 
 use Nette;
-use Nette\String;
+use Nette\Utils\Strings;
 
 
 /**
@@ -74,7 +74,7 @@ class Response extends Nette\Object
 
 		} else {
 			# Extract headers from response
-			$headers = String::split(substr($response, 0, $this->request->info['header_size']), "~[\n\r]+~", PREG_SPLIT_NO_EMPTY);
+			$headers = Strings::split(substr($response, 0, $this->request->info['header_size']), "~[\n\r]+~", PREG_SPLIT_NO_EMPTY);
 			$this->Headers = array_merge($this->Headers, static::parseHeaders($headers));
 
 			# Remove headers from the response body
@@ -96,7 +96,7 @@ class Response extends Nette\Object
 
 		# Extract the version and status from the first header
 		$version_and_status = array_shift($headers);
-		$matches = String::match($version_and_status, self::VERSION_AND_STATUS);
+		$matches = Strings::match($version_and_status, self::VERSION_AND_STATUS);
 		if (count($matches) > 0) {
 			$found['Http-Version'] = $matches['version'];
 			$found['Status-Code'] = $matches['code'];
@@ -105,7 +105,7 @@ class Response extends Nette\Object
 
 		# Convert headers into an associative array
 		foreach ($headers as $header) {
-			$matches = String::match($header, self::HEADER_REGEXP);
+			$matches = Strings::match($header, self::HEADER_REGEXP);
 			$found[$matches['header']] = $matches['value'];
 		}
 
@@ -129,7 +129,7 @@ class Response extends Nette\Object
 				throw new \InvalidStateException("Fopen error for file '{$path_p}'");
 			}
 
-			$headers = String::split(@fread($fp, $this->request->info['header_size']), "~[\n\r]+~", PREG_SPLIT_NO_EMPTY); // internationaly @
+			$headers = Strings::split(@fread($fp, $this->request->info['header_size']), "~[\n\r]+~", PREG_SPLIT_NO_EMPTY); // internationaly @
 			$this->Headers = array_merge($this->Headers, static::parseHeaders($headers));
 
 			@fseek($fp, $this->request->info['header_size']); // internationaly @
@@ -236,8 +236,8 @@ class Response extends Nette\Object
 			$from = static::getCharset($charset);
 		}
 
-		$from = String::upper($from);
-		$to = String::upper($to);
+		$from = Strings::upper($from);
+		$to = Strings::upper($to);
 
 		if ($from != $to && $from && $to) {
 			if ($body = @iconv($from, $to, $this->body)) {
@@ -262,7 +262,7 @@ class Response extends Nette\Object
 	 */
 	public static function fixContentTypeMeta($document, $charset = 'utf-8')
 	{
-		return String::replace($document, // hack for DOMDocument
+		return Strings::replace($document, // hack for DOMDocument
 			'~<meta([^>]+http-equiv\\s*=\\s*)["\']*Content-Type["\']*([^>]+content\\s*=\\s*["\'][^;]+;)[\t ]*charset=[^"\']+(["\'][^>]*)>~i',
 			'<meta\\1"Content-Type"\\2 charset=' . $charset . '\\3>');
 	}
@@ -274,7 +274,7 @@ class Response extends Nette\Object
 	 */
 	public static function getCharset($header, $default = NULL)
 	{
-		$match = String::match($header, self::CONTENT_TYPE);
+		$match = Strings::match($header, self::CONTENT_TYPE);
 		return isset($match['charset']) ? $match['charset'] : $default;
 	}
 
@@ -285,7 +285,7 @@ class Response extends Nette\Object
 	 */
 	public static function getContentType($header, $default = NULL)
 	{
-		$match = String::match($header, self::CONTENT_TYPE);
+		$match = Strings::match($header, self::CONTENT_TYPE);
 		return isset($match['type']) ? $match['type'] : $default;
 	}
 

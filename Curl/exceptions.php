@@ -7,7 +7,7 @@ namespace Curl;
  * Exception thrown by cURL wrapper
  * @author Filip Procházka <hosiplan@kdyby.org>
  */
-class CurlException extends \Exception implements \Nette\IDebugPanel
+class CurlException extends \Exception implements \Nette\Diagnostics\IBarPanel
 {
 	/** @var \Curl\Response */
 	var $response;

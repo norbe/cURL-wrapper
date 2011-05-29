@@ -3,8 +3,7 @@
 namespace Curl;
 
 use Nette;
-use Nette\String;
-use Nette\Tools;
+use Nette\Utils\Strings;
 use Nette\Web\Uri;
 
 
@@ -416,7 +415,7 @@ class Request extends Nette\Object
 	 */
 	public function setMaxCycles($maxCycles)
 	{
-		if (!Tools::iniFlag('safe_mode') && ini_get('open_basedir') == "") {
+		if (!$this->safeMode() && ini_get('open_basedir') == "") {
 			$this->setOption('MAXREDIRS', $maxCycles);
 		}else
 			$this->MaxCycles = $maxCycles;
@@ -1212,11 +1211,11 @@ class Request extends Nette\Object
 		$headers = array();
 		foreach ($this->headers as $key => $value) {
 			//fix HTTP_ACCEPT_CHARSET to Accept-Charset
-			$key = String::replace($key, array(
+			$key = Strings::replace($key, array(
 					'~^HTTP_~i' => '',
 					'~_~' => '-'
 				));
-			$key = String::replace($key, array(
+			$key = Strings::replace($key, array(
 					'~(?P<word>[a-z]+)~i',
 				), function($match) {
 					return ucfirst(strtolower(current($match)));
@@ -1294,13 +1293,13 @@ class Request extends Nette\Object
 		}
 
 		// fix:Sairon http://forum.nette.org/cs/profile.php?id=1844 thx
-		if ($this->followRedirects === NULL && !Tools::iniFlag('safe_mode') && ini_get('open_basedir') == ""){
+		if ($this->followRedirects === NULL && !$this->safeMode() && ini_get('open_basedir') == ""){
 			$this->followRedirects = TRUE;
 		}
 
 		// Set all cURL options
 		foreach ($this->Options as $option => $value) {
-			if($option == "FOLLOWLOCATION" && ( Tools::iniFlag('safe_mode') || ini_get('open_basedir') != "" )){
+			if($option == "FOLLOWLOCATION" && ( $this->safeMode() || ini_get('open_basedir') != "" )){
 				continue;
 			}
 			curl_setopt($requestResource, constant('CURLOPT_'.$option), $value);
@@ -1338,6 +1337,12 @@ class Request extends Nette\Object
 		}
 
 		return TRUE;
+	}
+
+	protected function safeMode()
+	{
+		$status = strtolower(ini_get('safe_mode'));
+		return $status === 'on' || $status === 'true' || $status === 'yes' || $status % 256;
 	}
 
 }
