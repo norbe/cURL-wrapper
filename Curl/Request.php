@@ -4,7 +4,7 @@ namespace Curl;
 
 use Nette;
 use Nette\Utils\Strings;
-use Nette\Web\Uri;
+use Nette\Http\Url as Uri;
 
 
 // we'll need this
