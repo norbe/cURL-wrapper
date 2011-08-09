@@ -411,7 +411,7 @@ class Request extends Nette\Object
 	/**
 	 * Set option value for CURLOPT_MAXREDIRS, if safe_mode or open_basedir is on set only $MaxCycles
 	 * @param int $maxCycles
-	 * @return \Curl\Request 
+	 * @return \Curl\Request
 	 */
 	public function setMaxCycles($maxCycles)
 	{
@@ -422,7 +422,7 @@ class Request extends Nette\Object
 
 		return $this;
 	}
-	
+
 	/**
 	 * Get option value for $MaxCycles
 	 * @return int
@@ -877,7 +877,7 @@ class Request extends Nette\Object
 	public function get($url = NULL, $vars = array())
 	{
 		if (!empty($this->url)) {
-			$post = $url;
+			$vats = $url;
 			$url = $this->url;
 		}
 
