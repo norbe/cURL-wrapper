@@ -877,7 +877,7 @@ class Request extends Nette\Object
 	public function get($url = NULL, $vars = array())
 	{
 		if (!empty($this->url)) {
-			$vats = $url;
+			$vars = $url;
 			$url = $this->url;
 		}
 
