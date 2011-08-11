@@ -4,7 +4,7 @@ namespace Curl;
 
 use Nette;
 use Nette\Utils\Strings;
-use Nette\Http\Url as Uri;
+use Nette\Http\Url;
 
 
 // we'll need this
@@ -1148,12 +1148,12 @@ class Request extends Nette\Object
 	 * @param string $from
 	 * @param string $to
 	 * @throws \InvalidStateException
-	 * @return \Nette\Web\Uri
+	 * @return Url
 	 */
 	public static function fixUrl($from, $to)
 	{
-		$url = new Uri($to);
-		$lastUrl = new Uri($from);
+		$url = new Url($to);
+		$lastUrl = new Url($from);
 
 		if (empty($url->scheme)) { // scheme
 			if (empty($lastUrl->scheme)) {
