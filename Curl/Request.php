@@ -706,7 +706,7 @@ class Request extends Nette\Object
 		}
 
 		@mkdir($downloadFolder); // may already exists
-		@chmod($downloadFolder, "0754");
+		@chmod($downloadFolder, 0754);
 
 		if (is_dir($downloadFolder) && is_writable($downloadFolder)) {
 			$this->DownloadFolder = $downloadFolder;
